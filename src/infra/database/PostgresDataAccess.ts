@@ -1,13 +1,14 @@
 import postgres from 'postgres';
 import { DataAccessPort } from '../../domain/database/DataAcess';
+import { ConfigDb } from '../config/ConfigDb';
 
 export class PostgresDataAccess extends DataAccessPort {
   private readonly connectionOptions: any;
   private readonly allowedFields = ['id', 'name', 'ean', 'price', 'stock', 'discount', 'deleted_at'];
 
-  constructor(connectionString: string) {
+  constructor(private config:ConfigDb) {
     super();
-    this.connectionOptions = connectionString;
+    this.connectionOptions = this.config.getDb()
   }
 
   

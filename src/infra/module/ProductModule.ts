@@ -1,8 +1,10 @@
 import { DataAccessPort } from "../../domain/database/DataAcess";
 import { Product } from "../../domain/entites/Product";
 import { RepositoryPort } from "../../domain/repository/RepositoryPort";
+import { ProductController } from "../controller/ProductController";
 import { DependencyInjection } from "../pattern/DI";
 import { ProductRepository } from "../repository/ProductRepository";
+import { ProductRouter } from "../routers/ProductRouter";
 import { ServerPort } from "../server/ServerPort";
 
 export class ProductModule {
@@ -13,6 +15,7 @@ export class ProductModule {
         this.db = this.di.getDependency(DataAccessPort)
         this.productRepository = new ProductRepository(this.db)
         this.server = this.di.getDependency(ServerPort)
-        
+        new ProductController()
+        new ProductRouter(this.server, new ProductController())
     }
 }

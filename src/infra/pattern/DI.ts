@@ -11,6 +11,7 @@ export class DependencyInjection {
         const dependency = this.dependency.get(port)
         if(dependency)
             return dependency
-        throw new Error("Dependency Not Found")
+
+        throw new Error("Dependency "+port+" Not Found")
     }
 }

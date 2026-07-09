@@ -4,7 +4,6 @@ export type IRequest = {
     body:any,
 }
 
-
 export type IResponse = {
     send(message:string):any,
     json(body:any):any,
