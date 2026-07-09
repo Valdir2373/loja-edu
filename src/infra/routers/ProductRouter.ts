@@ -1,15 +1,39 @@
 import { ProductController } from "../controller/ProductController";
-import { middleWare, ServerPort } from "../server/ServerPort";
+import { ProductInput } from "../schema/ProductSchema";
+import { IRequest, middleWare, ServerPort } from "../server/ServerPort";
+import { Validator } from "../validators/Validator";
+
+type ProductInjection = { productInput: ProductInput };
 
 export class ProductRouter {
-    constructor(private server:ServerPort, private productController:ProductController){
-        this.boot()
+    constructor(
+        private server: ServerPort,
+        private productController: ProductController,
+        private validator: Validator<ProductInput>
+    ) {
+        this.boot();
     }
-    boot(){
-        this.server.addRouter("get","/",this.createProduct.bind(this))
+
+    private boot() {
+        this.server.addRouter("post", "/", this.validatorProductInput, this.createProduct.bind(this));
     }
-    private createProduct:middleWare = (req,res)=>{
-        res.send("olá")
-        this.productController.log()
+
+    private validatorProductInput: middleWare = (req, res, next) => {
+    try {
+        const data = this.validator.validate(req.body);
+        (req as IRequest<any, any, any, ProductInjection>).productInput = data;
+        next();
+    } catch (error) {
+        // O middleware apenas delega a formatação para quem conhece o erro
+        const details = this.validator.formatError(error);
+        res.status(400).json({ message: "Validation failed", details });
+    }
+
+    }
+
+    private createProduct: middleWare = (req, res) => {
+        const input = (req as IRequest<any, any, any, ProductInjection>).productInput;
+        this.productController.create(input);
+        res.send("foiii")
     }
 }

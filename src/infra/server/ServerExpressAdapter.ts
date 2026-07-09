@@ -11,10 +11,10 @@ export class ServerExpressAdapter extends ServerPort {
 
     }
 
-    addRouter(methodHttp: methodHttp, path: string, callback: middleWare): void {
+    addRouter(methodHttp: methodHttp, path: string, ...callback: middleWare[]): void {
         console.log(`Rota registrada: ${methodHttp.toUpperCase()}: ${path}`);
         
-        this.app[methodHttp](path, callback)
+        this.app[methodHttp](path, ...callback)
     }
     listen(port: number): void {
         this.app.listen(port, ()=>console.log("Servidor rodando em "+port))
