@@ -25,7 +25,7 @@ export class AppModule {
         this.server = new ServerExpressAdapter()
         this.db = new PostgresDataAccess(this.configDb)
         this.di.addDependency(this.server,ServerPort)
-        this.di.addDependency(this.server,DataAccessPort)
+        this.di.addDependency(this.db,DataAccessPort)
         this.di.addDependency(productValidator, Validator<ProductInput>)
         this.modules()
     }

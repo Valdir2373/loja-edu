@@ -7,7 +7,7 @@ export type IRequest<TBody = any, TParams = any, TQuery = any, TInjected = {}> =
 } & TInjected;
 
 export type IResponse = {
-    send(message:string):any,
+    send(message?:string):any,
     json(body:any):any,
     status(status:number):IResponse
 }

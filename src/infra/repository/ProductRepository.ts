@@ -5,9 +5,13 @@ import { Product } from "../../domain/entites/Product";
 export class ProductRepository extends RepositoryPort<Product> {
   private readonly collectionName = "produtos";
 
-  constructor(dataAccess: DataAccessPort) {
+  constructor(protected dataAccess: DataAccessPort) {
     super(dataAccess);
-  }
+    if (typeof this.dataAccess.findMany !== 'function') {
+        console.error("CRÍTICO: findMany não existe no objeto dataAccess injetado!");
+        console.dir(this.dataAccess);
+    }
+}
 
   async save(entity: Product): Promise<string | number | undefined> {
     return await this.dataAccess.create<Product>(this.collectionName, entity);

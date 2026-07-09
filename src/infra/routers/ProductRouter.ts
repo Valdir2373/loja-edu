@@ -2,6 +2,7 @@ import { ProductController } from "../controller/ProductController";
 import { ProductInput } from "../schema/ProductSchema";
 import { IRequest, middleWare, ServerPort } from "../server/ServerPort";
 import { Validator } from "../validators/Validator";
+import { methodHttp } from "../server/ServerPort";
 
 type ProductInjection = { productInput: ProductInput };
 
@@ -14,8 +15,41 @@ export class ProductRouter {
         this.boot();
     }
 
-    private boot() {
-        this.server.addRouter("post", "/", this.validatorProductInput, this.createProduct.bind(this));
+    // No seu ProductRouter.ts
+private boot() {
+    this.registerRouterProductInput("post", "/", this.createProduct.bind(this));
+    this.server.addRouter("put", "/:id", this.updateProduct.bind(this));
+    this.server.addRouter("delete", "/:id", this.deleteProduct.bind(this));
+    this.server.addRouter("get", "/:id", this.getById.bind(this));
+    this.server.addRouter("get", "/", this.getAll.bind(this));
+}
+
+private deleteProduct: middleWare = async (req, res) => {
+    const { id } = req.params;
+    if(typeof id != "string" || id == "undefined" || !id)
+        return res.status(400).json({message:"Error bad request, I need id"})
+    console.log("DEBUG ID RECEBIDO:", id);
+    await this.productController.delete(id);
+    res.status(204).send();
+}
+
+private getById: middleWare = async (req, res) => {
+    const id = req.params.id
+    console.log(typeof id);
+    
+    if(typeof id != "string" || id == "undefined" || !id)
+        return res.status(400).json({message:"Error bad request, I need id"})
+    const product = await this.productController.getById(req.params.id);
+    product ? res.json(product) : res.status(404).json({ message: "Not found" });
+}
+
+private getAll: middleWare = async (req, res) => {
+    const products = await this.productController.getAll();
+    res.json(products);
+}
+
+    private registerRouterProductInput(methodHttp:methodHttp, path:string, ...callback:middleWare[]){
+        this.server.addRouter(methodHttp,path,this.validatorProductInput.bind(this),...callback)
     }
 
     private validatorProductInput: middleWare = (req, res, next) => {
@@ -24,16 +58,37 @@ export class ProductRouter {
         (req as IRequest<any, any, any, ProductInjection>).productInput = data;
         next();
     } catch (error) {
-        // O middleware apenas delega a formatação para quem conhece o erro
         const details = this.validator.formatError(error);
         res.status(400).json({ message: "Validation failed", details });
     }
 
     }
 
-    private createProduct: middleWare = (req, res) => {
+    private createProduct: middleWare = async (req, res) => {
+    try {
+        // O router extrai o DTO validado (injetado pelo middleware)
         const input = (req as IRequest<any, any, any, ProductInjection>).productInput;
-        this.productController.create(input);
-        res.send("foiii")
+        
+        // O controller só recebe o DTO
+        const result = await this.productController.create(input);
+        
+        res.status(201).json(result);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
     }
+}
+
+private updateProduct: middleWare = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const input = req.body; // DTO de atualização
+        
+        await this.productController.update(id, input);
+        res.status(200).send("Atualizado com sucesso");
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+}
+
+
 }

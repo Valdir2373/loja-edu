@@ -13,17 +13,18 @@ export class PostgresDataAccess extends DataAccessPort {
 
   
   private async executeQuery<T>(callback: (sql: postgres.Sql) => Promise<T>): Promise<T> {
-    const sql = postgres(this.connectionOptions, {
-      ssl: 'require',
-      connect_timeout: 5,
-      max: 1 
-    });
-    try {
-      return await callback(sql);
-    } finally {
-      await sql.end();
-    }
+  const sql = postgres(this.connectionOptions, {
+    // Tente desativar a verificação de certificado se o SSL for o problema
+    ssl: { rejectUnauthorized: false }, 
+    connect_timeout: 10,
+    max: 1 
+  });
+  try {
+    return await callback(sql);
+  } finally {
+    await sql.end();
   }
+}
 
 private buildWhere(sql: postgres.Sql, query: Record<string, any>) {
   const keys = Object.keys(query).filter(k => this.allowedFields.includes(k));
