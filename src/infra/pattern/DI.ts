@@ -3,7 +3,7 @@ export class DependencyInjection {
     constructor() {}
     addDependency<T>(adapter:T, port:Function):void{
         if(this.dependency.get(port))
-            throw new Error("Dependency Already Registred")
+            throw new Error("Dependency Already Registred: "+port)
         this.dependency.set(port,adapter)
     }
 

@@ -15,26 +15,28 @@ import { UpdateProduct } from "../../app/products/useCase/UpdateProduct";
 import { GetProductById } from "../../app/products/useCase/GetProductById";
 import { GetAllProducts } from "../../app/products/useCase/GetAllProducts";
 import { createIdAdapter } from "../utils/createId";
+import { ProductValidator } from "../validators/ProductValidator";
+import { DTOBuilderAndValidator } from "../shared/validators/DTOBuilderAndValidator";
 
 export class ProductModule {
     private server:ServerPort
     private db:DataAccessPort
     private productValidator: Validator<ProductInput>
     constructor(private di:DependencyInjection) {
-        this.productValidator = this.di.getDependency(Validator<ProductInput>)
+        const validator = this.di.getDependency<DTOBuilderAndValidator>(DTOBuilderAndValidator)
+        this.productValidator = new ProductValidator(validator)
         this.db = this.di.getDependency(DataAccessPort)
         this.server = this.di.getDependency(ServerPort)
         const productRepository = new ProductRepository(this.db)
         const controller = new ProductController(
-
-new CreateProduct(productRepository,createIdAdapter),
-new DeleteProduct(productRepository),
-new UpdateProduct(productRepository),
-new GetProductById(productRepository),
-new GetAllProducts(productRepository),
+        new CreateProduct(productRepository,createIdAdapter),
+        new DeleteProduct(productRepository),
+        new UpdateProduct(productRepository),
+        new GetProductById(productRepository),
+        new GetAllProducts(productRepository),
 
         )
-        const routers = new ProductRouter(this.server,controller,this.productValidator)
+        new ProductRouter(this.server,controller,this.productValidator)
 
     }
 }

@@ -14,7 +14,6 @@ export class PostgresDataAccess extends DataAccessPort {
   
   private async executeQuery<T>(callback: (sql: postgres.Sql) => Promise<T>): Promise<T> {
   const sql = postgres(this.connectionOptions, {
-    // Tente desativar a verificação de certificado se o SSL for o problema
     ssl: { rejectUnauthorized: false }, 
     connect_timeout: 10,
     max: 1 
@@ -27,18 +26,17 @@ export class PostgresDataAccess extends DataAccessPort {
 }
 
 private buildWhere(sql: postgres.Sql, query: Record<string, any>) {
-  const keys = Object.keys(query).filter(k => this.allowedFields.includes(k));
+  const keys = Object.keys(query);
   
-  
+  if (keys.length === 0) return sql`deleted_at IS NULL`;
+
   const conditions = keys.map(key => sql`${sql(key)} = ${query[key]}`);
-  
-  
   conditions.push(sql`deleted_at IS NULL`);
-  
-  
   
   return conditions.reduce((acc, curr) => sql`${acc} AND ${curr}`);
 }
+
+
   async count<T extends object>(collectionName: string, query: Partial<T>): Promise<number> {
     return this.executeQuery(async (sql) => {
       const [{ count }] = await sql`

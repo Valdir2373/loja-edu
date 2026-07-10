@@ -9,6 +9,11 @@ import { ServerPort } from "../server/ServerPort";
 import { Validator } from "../validators/Validator";
 import { ProductValidator } from "../validators/ProductValidator";
 import { ProductModule } from "./ProductModule";
+import { UserInput } from "../../app/users/dto/UserInput";
+import { UserValidator } from "../validators/UserValidator";
+import { UserModule } from "./UserModule";
+import { ZodDTOBuilderAndValidator } from "../shared/validators/ZodDTOBuilderAndValidator";
+import { DTOBuilderAndValidator } from "../shared/validators/DTOBuilderAndValidator";
 
 
 export class AppModule {
@@ -18,7 +23,6 @@ export class AppModule {
     private config:ConfigEnv
     private configDb:ConfigDb
     constructor() {
-        const productValidator = new ProductValidator()
         this.config = new ConfigEnv()
         this.configDb = new ConfigDb(this.config)
         this.di = new DependencyInjection()
@@ -26,12 +30,13 @@ export class AppModule {
         this.db = new PostgresDataAccess(this.configDb)
         this.di.addDependency(this.server,ServerPort)
         this.di.addDependency(this.db,DataAccessPort)
-        this.di.addDependency(productValidator, Validator<ProductInput>)
+        this.di.addDependency(ZodDTOBuilderAndValidator, DTOBuilderAndValidator)        
         this.modules()
     }
     
     private modules(){
         new ProductModule(this.di)
+        new UserModule(this.di)
     }
 
     listen(port:number){
