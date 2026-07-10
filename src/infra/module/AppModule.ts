@@ -13,6 +13,9 @@ import { UserValidator } from "../validators/UserValidator";
 import { UserModule } from "./UserModule";
 import { ZodDTOBuilderAndValidator } from "../shared/validators/ZodDTOBuilderAndValidator";
 import { DTOBuilderAndValidator } from "../shared/validators/DTOBuilderAndValidator";
+import { AuthTokenManager } from "../security/AuthTokenManager";
+import { JsonwebtokenAuthTokenManager } from "../security/JsonwebtokenAuthTokenManager";
+import { ConfigToken } from "../config/ConfigToken";
 
 
 export class AppModule {
@@ -22,16 +25,21 @@ export class AppModule {
     private config:ConfigEnv
     private configDb:ConfigDb
     private validator:DTOBuilderAndValidator
+    private configToken:ConfigToken
+    private tokenValidator:AuthTokenManager
     constructor() {
         this.config = new ConfigEnv()
         this.configDb = new ConfigDb(this.config)
+        this.configToken = new ConfigToken(this.config)
         this.di = new DependencyInjection()
         this.server = new ServerExpressAdapter()
         this.db = new PostgresDataAccess(this.configDb)
         this.validator = new ZodDTOBuilderAndValidator()
+        this.tokenValidator = new JsonwebtokenAuthTokenManager(this.configToken)
         this.di.addDependency(this.server,ServerPort)
         this.di.addDependency(this.db,DataAccessPort)
         this.di.addDependency(this.validator, DTOBuilderAndValidator)        
+        this.di.addDependency(this.tokenValidator, AuthTokenManager)
         this.modules()
     }
     
