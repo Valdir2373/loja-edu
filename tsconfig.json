@@ -10,5 +10,6 @@
     "skipLibCheck": true,
     "verbatimModuleSyntax": false,
     "isolatedModules": true
-  }
+  },
+  "exclude": ["tsup.config.ts"]
 }
