@@ -11,13 +11,13 @@ export interface ITokenSecrets {
 export class ConfigToken {
     constructor(private config:ConfigEnv){
     }
-    getToken(): ITokenSecrets {
+    static getToken(): ITokenSecrets {
         return {
-            jwtSecret: this.config.getVariable("JWT_SECRET"),
-            jwtRefreshSecret: this.config.getVariable("JWT_REFRESH_SECRET"),
-            jwtTimeSetSecret: this.config.getVariable("JWT_TIME_SET_SECRET"),
-            accessTokenExpiresIn: this.config.getVariable("JWT_ACCESS_EXPIRES") || "15m",
-            refreshTokenExpiresIn: this.config.getVariable("JWT_REFRESH_EXPIRES") || "7d",
+            jwtSecret: ConfigEnv.getVariable("JWT_SECRET"),
+            jwtRefreshSecret: ConfigEnv.getVariable("JWT_REFRESH_SECRET"),
+            jwtTimeSetSecret: ConfigEnv.getVariable("JWT_TIME_SET_SECRET"),
+            accessTokenExpiresIn: "15m",
+            refreshTokenExpiresIn: "7d",
         }
     }
 }

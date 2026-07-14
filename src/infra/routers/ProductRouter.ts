@@ -1,8 +1,8 @@
+import { ProductInput } from "../../app/products/dto/ProductInput";
 import { ProductController } from "../controller/ProductController";
-import { ProductInput } from "../schema/ProductSchema";
 import { IRequest, middleWare, ServerPort } from "../server/ServerPort";
-import { Validator } from "../validators/Validator";
 import { methodHttp } from "../server/ServerPort";
+import { ProductValidator } from "../validators/ProductValidator";
 
 type ProductInjection = { productInput: ProductInput };
 
@@ -10,17 +10,17 @@ export class ProductRouter {
     constructor(
         private server: ServerPort,
         private productController: ProductController,
-        private validator: Validator<ProductInput>
+        private validator: ProductValidator
     ) {
         this.boot();
     }
 
 private boot() {
-    this.registerRouterProductInput("post", "/user/", this.createProduct.bind(this));
-    this.server.addRouter("put", "/user/:id", this.updateProduct.bind(this));
-    this.server.addRouter("delete", "/user/:id", this.deleteProduct.bind(this));
-    this.server.addRouter("get", "/user/:id", this.getById.bind(this));
-    this.server.addRouter("get", "/user/", this.getAll.bind(this));
+    this.registerRouterProductInput("post", "/product/", this.createProduct.bind(this));
+    this.server.addRouter("put", "/product/:id", this.updateProduct.bind(this));
+    this.server.addRouter("delete", "/product/:id", this.deleteProduct.bind(this));
+    this.server.addRouter("get", "/product/:id", this.getById.bind(this));
+    this.server.addRouter("get", "/product/", this.getAll.bind(this));
 }
 
 private deleteProduct: middleWare = async (req, res) => {

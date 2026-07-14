@@ -1,11 +1,18 @@
-import { RepositoryPort } from "../../domain/repository/RepositoryPort";
+import { FilterQuery, RepositoryPort } from "../../domain/repository/RepositoryPort";
 import { DataAccessPort } from "../../domain/database/DataAcess";
 import { User } from "../../domain/entites/User";
 
 export class UserRepository extends RepositoryPort<User> {
+
   constructor(protected readonly dataAccess: DataAccessPort) {
     super(dataAccess);
   }
+
+
+  async findBy(query: Partial<User>): Promise<User | null> {
+      const user = await this.dataAccess.findOne<User>('users', query);
+      return user || null;
+    }
 
   async save(entity: User): Promise<string | number | undefined> {
     return await this.dataAccess.create("users", {

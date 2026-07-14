@@ -1,21 +1,35 @@
-import { RepositoryPort } from "../../domain/repository/RepositoryPort";
+import { FilterQuery, RepositoryPort } from "../../domain/repository/RepositoryPort";
 import { DataAccessPort } from "../../domain/database/DataAcess";
 import { Product } from "../../domain/entites/Product";
 
 export class ProductRepository extends RepositoryPort<Product> {
   private readonly collectionName = "produtos";
-
+  
   constructor(protected dataAccess: DataAccessPort) {
     super(dataAccess);
     if (typeof this.dataAccess.findMany !== 'function') {
-        console.error("CRÍTICO: findMany não existe no objeto dataAccess injetado!");
-        console.dir(this.dataAccess);
+      console.error("CRÍTICO: findMany não existe no objeto dataAccess injetado!");
+      console.dir(this.dataAccess);
     }
+  }
+  
+ async findBy(query: FilterQuery<Product>): Promise<Product | null> {
+    const data = await this.dataAccess.findOne<Product>(this.collectionName, query as any);
+    if (!data) return null;
+    return new Product(
+        data.id, data.name, data.price, data.discount, data.stock,
+        new Date(data.created_at), new Date(data.updated_at),
+        data.deleted_at ? new Date(data.deleted_at) : null
+    );
 }
+
+
 
   async save(entity: Product): Promise<string | number | undefined> {
     return await this.dataAccess.create<Product>(this.collectionName, entity);
   }
+
+
 
 async findById(id: string): Promise<Product | undefined> {
   const data = await this.dataAccess.findOne<Product>(this.collectionName, { id } as any);

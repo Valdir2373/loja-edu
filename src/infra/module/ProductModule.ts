@@ -1,13 +1,9 @@
 import { DataAccessPort } from "../../domain/database/DataAcess";
-import { Product } from "../../domain/entites/Product";
-import { RepositoryPort } from "../../domain/repository/RepositoryPort";
 import { ProductController } from "../controller/ProductController";
 import { DependencyInjection } from "../pattern/DI";
 import { ProductRepository } from "../repository/ProductRepository";
 import { ProductRouter } from "../routers/ProductRouter";
-import { ProductInput } from "../schema/ProductSchema";
 import { ServerPort } from "../server/ServerPort";
-import { Validator } from "../validators/Validator";
 
 import { CreateProduct } from "../../app/products/useCase/CreateProduct";
 import { DeleteProduct } from "../../app/products/useCase/DeleteProduct";
@@ -21,7 +17,7 @@ import { DTOBuilderAndValidator } from "../shared/validators/DTOBuilderAndValida
 export class ProductModule {
     private server:ServerPort
     private db:DataAccessPort
-    private productValidator: Validator<ProductInput>
+    private productValidator: ProductValidator
     constructor(private di:DependencyInjection) {
         const validator = this.di.getDependency<DTOBuilderAndValidator>(DTOBuilderAndValidator)        
         this.productValidator = new ProductValidator(validator)

@@ -256,31 +256,19 @@ let stringSchema = z.string({
     }
   }
 
-  validateAndTransform<T>(data: T): T {
+validateAndTransform<T>(data: T): T {
     if (!this.internalSchema) {
-      throw new Error(
-        "O schema não foi definido. Chame 'defineSchema' primeiro."
-      );
+        throw new Error("O schema não foi definido.");
     }
-    try {
-      return this.internalSchema.parse(data) as T;
-    } catch (error: any) {
-  // Acessa a propriedade "errors" via string para ignorar a checagem do TS
-  if (error && typeof error === 'object' && 'errors' in error) {
-    const errorDetails = (error as any)['errors'].map((err: any) => ({
-      path: err.path.join("."),
-      message: err.message,
-      code: err.code,
-    }));
+    const result = this.internalSchema.safeParse(data);
     
-    throw new ValidationError(
-      "Erro de validação e transformação do DTO",
-      errorDetails
-    );
-  }
-  throw error;
+    
+    if (!result.success) {
+        throw new ValidationError("Erro de validação do DTO", result.error?.format());
+    }
+    
+    return result.data as T;
 }
-  }
 
   getSchema(): ZodObject<any> {
     if (!this.internalSchema) {

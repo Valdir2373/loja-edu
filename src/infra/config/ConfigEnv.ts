@@ -1,13 +1,13 @@
 import {config} from "dotenv"
+import {expand} from "dotenv-expand"
 
-config()
+expand(config())
 
 export class ConfigEnv {
-    constructor() {}
-    getVariable(variable:string){
+    static getVariable(variable:string){
         const variableEnv = process.env[variable]
         if(!variableEnv)
-            throw new Error("Variable not found")
+            throw new Error("Variable: "+variable + " not found")
         return variableEnv
     }
 }

@@ -6,10 +6,17 @@ export class PostgresDataAccess extends DataAccessPort {
   private readonly connectionOptions: any;
   private readonly allowedFields = ['id', 'name', 'ean', 'price', 'stock', 'discount', 'deleted_at'];
 
-  constructor(private config:ConfigDb) {
+
+
+  constructor() {
     super();
-    this.connectionOptions = this.config.getDb()
+    this.connectionOptions = ConfigDb.getDb()
   }
+
+  async findBy<T extends object>(query: Partial<T>): Promise<T | null> {
+    const result = await this.findOne<T>('users', query);
+    return result || null;
+}
 
   
   private async executeQuery<T>(callback: (sql: postgres.Sql) => Promise<T>): Promise<T> {

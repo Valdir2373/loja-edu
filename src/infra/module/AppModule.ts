@@ -1,51 +1,46 @@
 import { DataAccessPort } from "../../domain/database/DataAcess";
-import { ConfigDb } from "../config/ConfigDb";
-import { ConfigEnv } from "../config/ConfigEnv";
 import { PostgresDataAccess } from "../database/PostgresDataAccess";
 import { DependencyInjection } from "../pattern/DI";
-import { ProductInput } from "../schema/ProductSchema";
 import { ServerExpressAdapter } from "../server/ServerExpressAdapter";
 import { ServerPort } from "../server/ServerPort";
-import { Validator } from "../validators/Validator";
 import { ProductModule } from "./ProductModule";
-import { UserInput } from "../../app/users/dto/UserInput";
-import { UserValidator } from "../validators/UserValidator";
 import { UserModule } from "./UserModule";
 import { ZodDTOBuilderAndValidator } from "../shared/validators/ZodDTOBuilderAndValidator";
 import { DTOBuilderAndValidator } from "../shared/validators/DTOBuilderAndValidator";
 import { AuthTokenManager } from "../security/AuthTokenManager";
 import { JsonwebtokenAuthTokenManager } from "../security/JsonwebtokenAuthTokenManager";
-import { ConfigToken } from "../config/ConfigToken";
+import { PasswordHasher } from "../../domain/security/PasswordHasher";
+import { Argon2idHasher } from "../security/Argon2idHasher";
+import { SmtpEmailServiceAdapter } from "../email/SmptEmailServiceAdapter";
+import { EmailPort } from "../email/EmailPort";
+import { RedisCacheAdapter } from "../database/RedisCacheAdapter";
+import { CachePort } from "../../domain/database/CachePort";
+import { ServiceAuthToken } from "../security/ServiceAuthToken";
 
 
 export class AppModule {
     private di:DependencyInjection
     private server:ServerPort
-    private db: DataAccessPort
-    private config:ConfigEnv
-    private configDb:ConfigDb
-    private validator:DTOBuilderAndValidator
-    private configToken:ConfigToken
-    private tokenValidator:AuthTokenManager
+    private cache:CachePort
+    private serviceAuthToken:ServiceAuthToken
     constructor() {
-        this.config = new ConfigEnv()
-        this.configDb = new ConfigDb(this.config)
-        this.configToken = new ConfigToken(this.config)
         this.di = new DependencyInjection()
-        this.server = new ServerExpressAdapter()
-        this.db = new PostgresDataAccess(this.configDb)
-        this.validator = new ZodDTOBuilderAndValidator()
-        this.tokenValidator = new JsonwebtokenAuthTokenManager(this.configToken)
-        this.di.addDependency(this.server,ServerPort)
-        this.di.addDependency(this.db,DataAccessPort)
-        this.di.addDependency(this.validator, DTOBuilderAndValidator)        
-        this.di.addDependency(this.tokenValidator, AuthTokenManager)
+        this.di.addDependency(new RedisCacheAdapter(), CachePort)
+        this.di.addDependency(new ServerExpressAdapter(), ServerPort)
+        this.di.addDependency(new PostgresDataAccess(), DataAccessPort)
+        this.di.addDependency(new ZodDTOBuilderAndValidator(), DTOBuilderAndValidator)
+        this.di.addDependency(new JsonwebtokenAuthTokenManager(), AuthTokenManager)
+        this.di.addDependency(new Argon2idHasher(), PasswordHasher)
+        this.di.addDependency(new SmtpEmailServiceAdapter(), EmailPort)
+        this.server = this.di.getDependency(ServerPort)
+        this.cache = this.di.getDependency(CachePort)
+        this.serviceAuthToken = new ServiceAuthToken(this.di)
         this.modules()
     }
     
     private modules(){
         new ProductModule(this.di)
-        new UserModule(this.di)
+        new UserModule(this.di,this.serviceAuthToken)
     }
 
     listen(port:number){

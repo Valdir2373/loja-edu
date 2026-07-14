@@ -31,18 +31,15 @@ export class UserCrudRouter {
         this.server.addRouter(method, path, this.validatorInputUpdate.bind(this), ...callback);
     }
 
-
-
-    
-
     private validatorUserInput: middleWare = (req, res, next) => {
         try {
             const data = this.validator.validate(req.body);
-            (req as IRequest<any, any, any, UserInjection>).userInput = data;
+            console.log(data);
+            (req as IRequest<any, any,any, UserInjection>).userInput = data;
+            
             next();
         } catch (error) {
-            const details = this.validator.formatError(error);
-            res.status(400).json({ message: "Validation failed", details });
+            res.status(400).json({ message: "Validation failed", error });
         }
     }
 
@@ -61,8 +58,11 @@ export class UserCrudRouter {
     private createUser: middleWare = async (req, res) => {
         try {
             const input = (req as IRequest<any, any, any, UserInjection>).userInput;
-            const result = await this.userCrudController.create(input);
-            res.status(201).json(result);
+            console.log(input);
+            
+            const user = await this.userCrudController.create(input);
+            
+            res.status(201).json(user);
         } catch (error: any) {
             res.status(500).json({ message: error.message });
         }

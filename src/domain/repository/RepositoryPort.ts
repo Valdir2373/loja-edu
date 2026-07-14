@@ -1,5 +1,9 @@
 import { DataAccessPort } from "../database/DataAcess";
 
+export type FilterQuery<T> = {
+    [P in keyof T]?: T[P];
+};
+
 export abstract class RepositoryPort<T> {
   constructor(protected readonly dataAccess: DataAccessPort) {}
 
@@ -7,6 +11,7 @@ export abstract class RepositoryPort<T> {
   abstract findById(id: string): Promise<T | undefined>;
   abstract findAll(): Promise<T[]>;
   abstract update(id: string, entity: Partial<T>): Promise<void>;
+  abstract findBy(query: FilterQuery<T>): Promise<T | null>;
   abstract exists(filter: Partial<T>): Promise<boolean>;
   abstract delete(id: string): Promise<number>;
 }

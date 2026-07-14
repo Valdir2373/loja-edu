@@ -4,10 +4,14 @@ export class User {
     public readonly name: string,
     public readonly email: string,
     public readonly password: string,
+    private isAdmin: boolean = false,
+    private isVerified: boolean = false,
     public readonly created_at: Date = new Date(),
     public readonly updated_at: Date = new Date(),
-    public readonly deleted_at: Date | null = null
+    private _deleted_at: Date | null = null
   ) {}
+
+  get deleted_at(): Date | null { return this._deleted_at; }
 
   static build(
     createId: () => string,
@@ -15,10 +19,23 @@ export class User {
     email: string,
     password: string
   ): User {
-    return new User(createId(), name, email, password);
+    if (email.length < 5 || !email.includes('@')) {
+      throw new Error("Email inválido.");
+    }
+    return new User(createId(), name, email, password, false, false);
+  }
+
+  public verify(): void {
+    if (this.isVerified) throw new Error("Usuário já está verificado.");
+    this.isVerified = true;
+  }
+
+  public promoteToAdmin(): void {
+    this.isAdmin = true;
   }
 
   public softDelete(): void {
-    (this as any).deleted_at = new Date();
+    if (this._deleted_at) throw new Error("Usuário já está deletado.");
+    this._deleted_at = new Date();
   }
 }
