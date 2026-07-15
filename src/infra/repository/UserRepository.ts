@@ -23,6 +23,11 @@ export class UserRepository extends RepositoryPort<User> {
     });
   }
 
+  async findMany(query: FilterQuery<User>): Promise<User[]> {
+  const users = await this.dataAccess.findMany<User>("users", query as any);
+  return users.map(u => new User(u.id, u.name, u.email, u.password));
+}
+
   async findById(id: string): Promise<User | undefined> {
     const data = await this.dataAccess.findOne<User>("users", { id } as any);
     if (!data) return undefined;
