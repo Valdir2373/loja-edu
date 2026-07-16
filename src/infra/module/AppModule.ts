@@ -32,9 +32,9 @@ export class AppModule {
         this.di.addDependency(new JsonwebtokenAuthTokenManager(), AuthTokenManager)
         this.di.addDependency(new Argon2idHasher(), PasswordHasher)
         this.di.addDependency(new SmtpEmailServiceAdapter(), EmailPort)
+        this.serviceAuthToken = new ServiceAuthToken(this.di)
         this.server = this.di.getDependency(ServerPort)
         this.cache = this.di.getDependency(CachePort)
-        this.serviceAuthToken = new ServiceAuthToken(this.di)
         this.modules()
     }
     

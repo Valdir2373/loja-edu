@@ -20,7 +20,7 @@ import { ServiceAuthToken } from "../security/ServiceAuthToken";
 import { UserAuthRouter } from "../routers/UserAuthRouter";
 
 export class UserModule {
-    constructor(private di: DependencyInjection,private serviceAuthToken:ServiceAuthToken) {
+    constructor(private di: DependencyInjection,serviceAuthToken:ServiceAuthToken) {
         const passwordHasher:PasswordHasher = this.di.getDependency<PasswordHasher>(PasswordHasher)
         const db = this.di.getDependency<DataAccessPort>(DataAccessPort);
         const server = this.di.getDependency<ServerPort>(ServerPort);
@@ -38,12 +38,12 @@ export class UserModule {
             email,
             serviceAuthToken
         );
-        new UserCrudRouter(server, crudController, userValidator);
+        new UserCrudRouter(server, crudController, userValidator,serviceAuthToken);
 
         const authController = new UserAuthController(
             new LoginUser(repository,passwordHasher),
             new VerifyEmail(repository),serviceAuthToken
         )
-        new UserAuthRouter(server,authController) 
+        new UserAuthRouter(server,authController, userValidator) 
     }
 }

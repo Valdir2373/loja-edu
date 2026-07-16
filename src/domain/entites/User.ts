@@ -4,11 +4,11 @@ export class User {
     public readonly name: string,
     public readonly email: string,
     public readonly password: string,
-    private isAdmin: boolean = false,
-    private isVerified: boolean = false,
+    public isAdmin: boolean = false,
+    public isVerified: boolean = false,
     public readonly created_at: Date = new Date(),
     public readonly updated_at: Date = new Date(),
-    private _deleted_at: Date | null = null
+    public _deleted_at: Date | null = null
   ) {}
 
   get deleted_at(): Date | null { return this._deleted_at; }

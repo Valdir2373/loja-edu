@@ -12,13 +12,26 @@ export type IResponse = {
     send(message?: string): any;
     json(body: any): any;
     status(status: number): IResponse;
-    cookie(name: string, val: string, options?: any): IResponse; 
+    cookie(name: string, val: string, options?: ICookieOptions): IResponse; 
     clearCookie(name: string): IResponse; 
 }
 
-export type middleWare = (req: IRequest, res: IResponse, next: () => void) => any;
+export interface ICookieOptions {
+  domain?: string;
+  encode?: (val: string) => string;
+  expires?: Date;
+  httpOnly?: boolean;
+  maxAge?: number;
+  path?: string;
+  priority?: "low" | "medium" | "high";
+  secure?: boolean;
+  signed?: boolean;
+  sameSite?: "strict" | "lax" | "none" | boolean;
+}
+
+export type middleWare = (req: IRequest, res: IResponse, next: () => void) => Promise<any>;
 
 export abstract class ServerPort {
     abstract listen(port: number): void;
-    abstract addRouter(methodHttp: methodHttp, path: string, ...callback: middleWare[]): void;
+    abstract addRouter(methodHttp: methodHttp, path: string, ...callback: middleWare[]): Promise<void>;
 }

@@ -5,6 +5,8 @@ import { DTOBuilderAndValidator } from "../shared/validators/DTOBuilderAndValida
 import { ZodDTOBuilderAndValidator } from "../shared/validators/ZodDTOBuilderAndValidator"; // Importe a implementação concreta
 
 export class UserValidator {
+
+    constructor(){}
     
     private createBuilder(): DTOBuilderAndValidator {
         return new ZodDTOBuilderAndValidator();
@@ -23,7 +25,7 @@ export class UserValidator {
     validateUpdate(data: unknown): Partial<UserInput> {
         const builder = this.createBuilder();
         builder.defineSchema(
-            { name: "name", type: "string", minLength: 3, required: false },
+            { name: "name", type: "string", minLength: 3, required: false },    
             { name: "email", type: "string", email: true, required: false },
             { name: "password", type: "string", minLength: 6, required: false }
         );
@@ -39,17 +41,31 @@ export class UserValidator {
         return builder.validateAndTransform(data as UserLoginInput);
     }
 
-    formatError(error: any): Record<string, string[]> {
-        
-        if (error instanceof ValidationError) {
-            console.error(error);
-            return error.details.reduce((acc: Record<string, string[]>, issue) => {
-                const path = issue.path;
-                if (!acc[path]) acc[path] = [];
-                acc[path].push(issue.message);
-                return acc;
-            }, {});
-        }
-        return { general: ["Erro de validação desconhecido"] };
+
+    validateAdmin(data:unknown): any{
+
     }
+
+   formatError(error: any): Record<string, string[]> {
+    if (error instanceof ValidationError) {
+        const details = error.details;
+        const formatted: Record<string, string[]> = {};
+
+        // Itera sobre as chaves do objeto details (ex: "email", "password")
+        Object.keys(details).forEach((key:any) => {
+            // Ignoramos o campo _errors se for vazio ou não contiver mensagens úteis
+            if (key === '_errors') return;
+
+            const fieldError = details[key];
+            
+            // Verifica se existe uma lista de erros dentro do campo
+            if (fieldError && Array.isArray(fieldError._errors)) {
+                formatted[key] = fieldError._errors;
+            }
+        });
+
+        return formatted;
+    }
+    return { general: ["Erro de validação desconhecido"] };
+}
 }

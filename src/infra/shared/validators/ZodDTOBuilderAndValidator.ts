@@ -39,8 +39,6 @@ export class ZodDTOBuilderAndValidator extends DTOBuilderAndValidator {
     switch (field.type) {
       case "string":
         const stringField = field as StringFieldDefinition;
-        // Se a versão do Zod não aceitar o objeto direto, 
-// ou se estiver dando conflito de tipagem, use o método .errorMap ou defina assim:
 let stringSchema = z.string({
   required_error: stringField.requiredMessage || baseMessage || `${stringField.name} é obrigatório.`,
   invalid_type_error: stringField.message || `${stringField.name} deve ser uma string.`,

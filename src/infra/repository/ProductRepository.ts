@@ -1,97 +1,67 @@
 import { FilterQuery, RepositoryPort } from "../../domain/repository/RepositoryPort";
 import { DataAccessPort } from "../../domain/database/DataAcess";
-import { Order } from "../../domain/entites/Order";
+import { Product } from "../../domain/entites/Product";
 
-export class OrderRepository extends RepositoryPort<Order> {
-  private readonly collectionName = "pedidos";
-
+export class ProductRepository extends RepositoryPort<Product> {
+  private readonly collectionName = "produtos";
+  
   constructor(protected dataAccess: DataAccessPort) {
     super(dataAccess);
   }
-  async save(entity: Order): Promise<string | number | undefined> {
-    const data = {
-      ...entity,
-      total: entity.totalAmount, 
-    };
-    return await this.dataAccess.create<Order>(this.collectionName, data);
+
+  async save(entity: Product): Promise<string | number | undefined> {
+    return await this.dataAccess.create<Product>(this.collectionName, entity);
   }
 
-  async findById(id: string): Promise<Order | undefined> {
-    const data = await this.dataAccess.findOne<Order>(this.collectionName, { id } as any);
+  async findById(id: string): Promise<Product | undefined> {
+    const data = await this.dataAccess.findOne<any>(this.collectionName, { id });
     if (!data) return undefined;
-    return new Order(
-      data.id,
-      data.userId,
-      data.items,
-      data.total,
-      data.status,
-      new Date(data.created_at),
-      new Date(data.updated_at),
-      data.deleted_at ? new Date(data.deleted_at) : null
-    );
+    return this.mapToEntity(data);
   }
 
-  async findAll(): Promise<Order[]> {
-    const dataList = await this.dataAccess.findMany<Order>(this.collectionName);
-    return dataList.map(data => new Order(
-      data.id,
-      data.userId,
-      data.items,
-      data.total,
-      data.status,
-      new Date(data.created_at),
-      new Date(data.updated_at),
-      data.deleted_at ? new Date(data.deleted_at) : null
-    ));
-  }
-
-  async findBy(query: FilterQuery<Order>): Promise<Order | null> {
-    const data = await this.dataAccess.findOne<Order>(this.collectionName, query as any);
+  async findBy(query: FilterQuery<Product>): Promise<Product | null> {
+    const data = await this.dataAccess.findOne<any>(this.collectionName, query as any);
     if (!data) return null;
-    return new Order(
-      data.id,
-      data.userId,
-      data.items,
-      data.total,
-      data.status,
-      new Date(data.created_at),
-      new Date(data.updated_at),
-      data.deleted_at ? new Date(data.deleted_at) : null
-    );
+    return this.mapToEntity(data);
   }
 
-  async exists(filter: Partial<Order>): Promise<boolean> {
-    const count = await this.dataAccess.count(this.collectionName, filter);
+  async findMany(query: FilterQuery<Product>): Promise<Product[]> {
+    const dataList = await this.dataAccess.findMany<any>(this.collectionName, query as any);
+    return dataList.map(data => this.mapToEntity(data));
+  }
+
+  async findAll(): Promise<Product[]> {
+    const dataList = await this.dataAccess.findMany<any>(this.collectionName);
+    return dataList.map(data => this.mapToEntity(data));
+  }
+
+  async exists(filter: Partial<Product>): Promise<boolean> {
+    const count = await this.dataAccess.count(this.collectionName, filter as any);
     return count > 0;
   }
 
-  async update(id: string, entity: Partial<Order>): Promise<void> {
-    const updateData = {
-      ...entity,
-      updated_at: new Date()
-    };
+  async update(id: string, entity: Partial<Product>): Promise<void> {
+    
+    const updateData = { ...entity, updated_at: new Date() };
     await this.dataAccess.update(this.collectionName, { id } as any, updateData as any);
   }
 
   async delete(id: string): Promise<number> {
-    return await this.dataAccess.update(this.collectionName, { id } as any, {
-      deleted_at: new Date()
-    } as any);
+    
+    return await this.dataAccess.remove(this.collectionName, { id } as any);
   }
 
-  async findMany(query: FilterQuery<Order>): Promise<Order[]> {
-  const dataList = await this.dataAccess.findMany<Order>(this.collectionName, query as any);
   
-  return dataList.map(data => new Order(
-    data.id,
-    data.userId,
-    data.items,
-    data.total,
-    data.status,
-    new Date(data.created_at),
-    new Date(data.updated_at),
-    data.deleted_at ? new Date(data.deleted_at) : null
-  ));
-}
-
+  private mapToEntity(data: any): Product {
+    return new Product(
+      data.id,
+      data.name,
+      data.price,
+      data.discount,
+      data.stock,
+      new Date(data.created_at),
+      new Date(data.updated_at),
+      data.deleted_at ? new Date(data.deleted_at) : null
+    );
+  }
 }

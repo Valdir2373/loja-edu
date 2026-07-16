@@ -12,7 +12,7 @@ export class ServerExpressAdapter extends ServerPort {
         this.app.use(cookieParser());
     }
 
-    addRouter(methodHttp: methodHttp, path: string, ...callback: middleWare[]): void {
+    async addRouter(methodHttp: methodHttp, path: string, ...callback: middleWare[]): Promise<void> {
         console.log(`Rota registrada: ${methodHttp.toUpperCase()}: ${path}`);
         this.app[methodHttp](path, ...callback);
     }

@@ -4,9 +4,11 @@ import { FilterQuery, RepositoryPort } from "../../domain/repository/RepositoryP
 
 export class OrderRepository extends RepositoryPort<Order> {
     private readonly collectionName = "pedidos";
+
     constructor(protected readonly dataAccess: DataAccessPort) {
         super(dataAccess);
     }
+
     async save(entity: Order): Promise<string | number | undefined> {
         const data = {
             id: entity.id,
@@ -44,7 +46,16 @@ export class OrderRepository extends RepositoryPort<Order> {
     }
 
     async update(id: string, entity: Partial<Order>): Promise<void> {
-        const updateData = { ...entity, updated_at: new Date() };
+        const updateData = { 
+            ...entity, 
+            updated_at: new Date() 
+        };
+        
+        if ('totalAmount' in updateData) {
+            (updateData as any).total = (updateData as any).totalAmount;
+            delete (updateData as any).totalAmount;
+        }
+
         await this.dataAccess.update(this.collectionName, { id } as any, updateData as any);
     }
 
@@ -55,17 +66,17 @@ export class OrderRepository extends RepositoryPort<Order> {
 
     async delete(id: string): Promise<number> {
         return await this.dataAccess.update(this.collectionName, { id } as any, {
-            deleted_at: new Date()
+            deleted_at: new Date(),
+            updated_at: new Date()
         } as any);
     }
 
-    
     private mapToEntity(data: any): Order {
         return new Order(
             data.id,
             data.userId,
             data.items,
-            data.total,
+            data.total ?? data.totalAmount,
             data.status,
             new Date(data.created_at),
             new Date(data.updated_at),
