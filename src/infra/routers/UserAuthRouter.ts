@@ -1,10 +1,12 @@
+import { UserInput } from "../../app/users/dto/UserInput";
 import { ConfigDomain } from "../config/ConfigDomain";
 import { UserAuthController } from "../controller/UserAuthController";
+import { ServiceAuthToken } from "../security/ServiceAuthToken";
 import { ServerPort, IRequest, IResponse, middleWare } from "../server/ServerPort";
 import { UserValidator } from "../validators/UserValidator";
 
 export class UserAuthRouter {
-    constructor(private server: ServerPort, private controller: UserAuthController, private validate:UserValidator) {
+    constructor(private server: ServerPort, private controller: UserAuthController, private validate:UserValidator, private service:ServiceAuthToken) {
         this.setupRoutes();
     }
 
@@ -27,7 +29,7 @@ export class UserAuthRouter {
                 sameSite: "strict",
                 maxAge: 5 * 24 * 60 * 60 * 1000
             })
-
+            
             return res.status(200).json(result);
         });
 
@@ -39,10 +41,25 @@ export class UserAuthRouter {
         });
 
         this.server.addRouter("post", "/auth/refresh", async (req: IRequest, res: IResponse) => {
-            const token = req.body.refreshToken;
-            return res.status(200).json({ message: "Refresh não implementado ainda" });
+            const token = await this.service.verifyRefreshToken(req.cookies.tokenRefresh) as any
+            const tokenUser = this.createAcessToken(token.id)
+            res.cookie("tokenUser",tokenUser,{
+                secure:ConfigDomain.secure,
+                httpOnly:true,
+                sameSite: "strict",
+                maxAge: 3600000
+
+            })
+
+            
+            return res.status(200).json({ message: "ok" });
         });
     }
+    
+    private createAcessToken(idUser:string){
+        return this.service.generateToken({id:idUser})
+    }
+
     private loginValidateInput:middleWare = (req, res, next)=>{
         try{
             this.validate.validateLogin.bind(this.validate)(req.body)

@@ -1,4 +1,5 @@
 import { UserLoginInput } from "../../app/users/dto/UserLoginInput";
+import { GetUser } from "../../app/users/useCase/GetUser";
 import { LoginUser } from "../../app/users/useCase/LoginUser";
 import { VerifyEmail } from "../../app/users/useCase/VerifyEmail";
 import { ServiceAuthToken } from "../security/ServiceAuthToken";
@@ -7,6 +8,7 @@ export class UserAuthController {
     constructor(
         private loginUser: LoginUser,
         private verifyEmailUseCase:VerifyEmail,
+        private getUser: GetUser,
         private serviceToken: ServiceAuthToken,
     ) {}
 
@@ -18,6 +20,9 @@ export class UserAuthController {
             accessToken,
             refreshToken
         };
+    }
+    async getById(id: string) {
+        return await this.getUser.execute(id);
     }
 
     async verifyEmail(token: string) {

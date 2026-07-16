@@ -4,7 +4,6 @@ import { OrderSummaryOutput } from "../dto/OrderSummaryOutput";
 
 export class ListOrdersByUser {
     constructor(private orderRepo: RepositoryPort<Order>) {}
-
     async execute(userId: string): Promise<OrderSummaryOutput[]> {
         const orders = await this.orderRepo.findMany({ userId } as any);
         return orders.map(order => ({

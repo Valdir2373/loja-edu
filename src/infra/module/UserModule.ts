@@ -28,11 +28,10 @@ export class UserModule {
         const email = this.di.getDependency<EmailPort>(EmailPort)
         const repository = new UserRepository(db);
         const userValidator = new UserValidator();
-
+        const getUser = new GetUser(repository)
 
         const crudController = new UserCrudController(
             new CreateUser(repository, createIdAdapter,passwordHasher),
-            new GetUser(repository),
             new UpdateUser(repository),
             new DeleteUser(repository),
             email,
@@ -42,8 +41,8 @@ export class UserModule {
 
         const authController = new UserAuthController(
             new LoginUser(repository,passwordHasher),
-            new VerifyEmail(repository),serviceAuthToken
+            new VerifyEmail(repository),getUser,serviceAuthToken
         )
-        new UserAuthRouter(server,authController, userValidator) 
+        new UserAuthRouter(server,authController, userValidator,serviceAuthToken) 
     }
 }

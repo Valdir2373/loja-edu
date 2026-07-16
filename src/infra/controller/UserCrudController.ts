@@ -2,7 +2,6 @@ import { UserInput } from "../../app/users/dto/UserInput";
 import { UserOutput } from "../../app/users/dto/UserOutput";
 import { CreateUser } from "../../app/users/useCase/CreateUser";
 import { DeleteUser } from "../../app/users/useCase/DeleteUser";
-import { GetUser } from "../../app/users/useCase/GetUser";
 import { UpdateUser } from "../../app/users/useCase/UpdateUser";
 import { EmailPort } from "../email/EmailPort";
 import { ServiceAuthToken } from "../security/ServiceAuthToken";
@@ -10,7 +9,6 @@ import { ServiceAuthToken } from "../security/ServiceAuthToken";
 export class UserCrudController {
     constructor(
         private createUser: CreateUser,
-        private getUser: GetUser,
         private updateUser: UpdateUser,
         private removeUser: DeleteUser,
         private email: EmailPort,
@@ -26,10 +24,6 @@ export class UserCrudController {
 
     async createTokenVerify(userOutput:UserOutput){
         return this.serviceToken.generateTimeSetToken(userOutput,"1h")
-    }
-
-    async getById(id: string) {
-        return await this.getUser.execute(id);
     }
 
     async update(id: string, input: Partial<UserInput>) {

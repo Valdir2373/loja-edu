@@ -16,6 +16,7 @@ import { EmailPort } from "../email/EmailPort";
 import { RedisCacheAdapter } from "../database/RedisCacheAdapter";
 import { CachePort } from "../../domain/database/CachePort";
 import { ServiceAuthToken } from "../security/ServiceAuthToken";
+import { OrderModule } from "./OrderModule";
 
 
 export class AppModule {
@@ -41,6 +42,7 @@ export class AppModule {
     private modules(){
         new ProductModule(this.di)
         new UserModule(this.di,this.serviceAuthToken)
+        new OrderModule(this.di, this.serviceAuthToken)
     }
 
     listen(port:number){

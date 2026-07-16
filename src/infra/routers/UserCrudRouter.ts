@@ -22,7 +22,6 @@ export class UserCrudRouter {
     private async boot() {
         this.registerRouterUserInput("post", "/users", this.createUser.bind(this));
         this.registerRouterUpdateUser("put", "/users/:id", this.updateUser.bind(this));
-        this.server.addRouter("get", "/users/:id", this.getUser.bind(this));
         this.server.addRouter("delete", "/users/:id", this.deleteUser.bind(this));
         this.server.addRouter("get", "/users", this.getAllUsers.bind(this))
     }
@@ -79,16 +78,6 @@ export class UserCrudRouter {
             res.status(201).json(user);
         } catch (error: any) {
             res.status(500).json({ message: error.message });
-        }
-    }
-
-    private getUser: middleWare = async (req, res) => {
-        try {
-            const { id } = req.params;
-            const result = await this.userCrudController.getById(id);
-            res.json(result);
-        } catch (error: any) {
-            res.status(404).json({ message: error.message });
         }
     }
 
