@@ -34,8 +34,6 @@ export class ProductRouter {
 
     private getById: middleWare = async (req, res) => {
         const id = req.params.id
-        console.log(typeof id);
-        
         if(typeof id != "string" || id == "undefined" || !id)
             return res.status(400).json({message:"Error bad request, I need id"})
         const product = await this.productController.getById(req.params.id);
@@ -43,7 +41,9 @@ export class ProductRouter {
     }
 
     private getAll: middleWare = async (req, res) => {
+        
         const products = await this.productController.getAll();
+        console.log(products);
         res.json(products);
     }
 

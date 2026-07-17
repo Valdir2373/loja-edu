@@ -15,6 +15,8 @@ export class CreateOrder {
         const orderItems: { productId: string; quantity: number; priceAtPurchase: number }[] = [];
         let total = 0;
         for (const item of orderInput.items) {
+            console.log(item);
+            
             const product = await this.productRepo.findBy({ id: item.productId } as any);
 
             if (!product) {

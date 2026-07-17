@@ -15,6 +15,8 @@ export class ProductRepository extends RepositoryPort<Product> {
 
   async findById(id: string): Promise<Product | undefined> {
     const data = await this.dataAccess.findOne<any>(this.collectionName, { id });
+    console.log(data);
+    
     if (!data) return undefined;
     return this.mapToEntity(data);
   }

@@ -20,7 +20,7 @@ export class OrderModule {
         const repoProduct:RepositoryPort<Product> = new ProductRepository(data)
         const orderController = new OrderController(new CreateOrder(repo,repoProduct, createIdAdapter))
         const server = this.di.getDependency<ServerPort>(ServerPort)
-        new OrderRouter(server,this.service,orderController)
+        new OrderRouter(server,orderController)
     }
     
 }
