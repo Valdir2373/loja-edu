@@ -1,48 +1,43 @@
-import { ServerPort } from "../server/ServerPort";
 import { DataAccessPort } from "../../domain/database/DataAcess";
-import { UserRepository } from "../repository/UserRepository";
-import { UserValidator } from "../validators/UserValidator";
-import { createIdAdapter } from "../utils/createId";
-import { UserCrudController } from "../controller/UserCrudController";
-import { DependencyInjection } from "../pattern/DI";
-import { CreateUser } from "../../app/users/useCase/CreateUser";
-import { UpdateUser } from "../../app/users/useCase/UpdateUser";
-import { UserCrudRouter } from "../routers/UserCrudRouter";
-import { GetUser } from "../../app/users/useCase/GetUser";
-import { DeleteUser } from "../../app/users/useCase/DeleteUser";
-import { DTOBuilderAndValidator } from "../shared/validators/DTOBuilderAndValidator";
-import { PasswordHasher } from "../../domain/security/PasswordHasher";
-import { EmailPort } from "../email/EmailPort";
+import { Address } from "../../domain/entites/Address";
+import { User } from "../../domain/entites/User";
+import { RepositoryPort } from "../../domain/repository/RepositoryPort";
+import { OAuthProviderPort } from "../../domain/security/OAuthProviderPort";
+import { AuthenticateWithGoogle } from "../../app/users/useCase/AuthenticateWithGoogle";
+import { CompleteOnboarding } from "../../app/users/useCase/CompleteOnboarding";
+import { GetAuthenticatedUser } from "../../app/users/useCase/GetAuthenticatedUser";
+import { LogoutUser } from "../../app/users/useCase/LogoutUser";
 import { UserAuthController } from "../controller/UserAuthController";
-import { LoginUser } from "../../app/users/useCase/LoginUser";
-import { VerifyEmail } from "../../app/users/useCase/VerifyEmail";
-import { ServiceAuthToken } from "../security/ServiceAuthToken";
+import { DependencyInjection } from "../pattern/DI";
+import { AddressRepository } from "../repository/AddressRepository";
+import { UserRepository } from "../repository/UserRepository";
+import { OnboardingRouter } from "../routers/OnboardingRouter";
 import { UserAuthRouter } from "../routers/UserAuthRouter";
+import { ServiceAuthToken } from "../security/ServiceAuthToken";
+import { ServerPort } from "../server/ServerPort";
+import { createIdAdapter } from "../utils/createId";
+import { UserValidator } from "../validators/UserValidator";
 
 export class UserModule {
-    constructor(private di: DependencyInjection,serviceAuthToken:ServiceAuthToken) {
-        const passwordHasher:PasswordHasher = this.di.getDependency<PasswordHasher>(PasswordHasher)
+    public readonly authRouter: UserAuthRouter;
+
+    constructor(private di: DependencyInjection, serviceAuthToken: ServiceAuthToken) {
         const db = this.di.getDependency<DataAccessPort>(DataAccessPort);
         const server = this.di.getDependency<ServerPort>(ServerPort);
-        const validator = this.di.getDependency<DTOBuilderAndValidator>(DTOBuilderAndValidator)
-        const email = this.di.getDependency<EmailPort>(EmailPort)
-        const repository = new UserRepository(db);
-        const userValidator = new UserValidator();
-        const getUser = new GetUser(repository)
+        const oauthProvider = this.di.getDependency<OAuthProviderPort>(OAuthProviderPort);
 
-        const crudController = new UserCrudController(
-            new CreateUser(repository, createIdAdapter,passwordHasher),
-            new UpdateUser(repository),
-            new DeleteUser(repository),
-            email,
-            serviceAuthToken
-        );
-        new UserCrudRouter(server, crudController, userValidator,serviceAuthToken);
+        const userRepository: RepositoryPort<User> = new UserRepository(db);
+        const addressRepository: RepositoryPort<Address> = new AddressRepository(db);
+        const validator = new UserValidator();
 
         const authController = new UserAuthController(
-            new LoginUser(repository,passwordHasher),
-            new VerifyEmail(repository),getUser,serviceAuthToken
-        )
-        new UserAuthRouter(server,authController, userValidator,serviceAuthToken) 
+            new AuthenticateWithGoogle(oauthProvider, userRepository, createIdAdapter, serviceAuthToken),
+            new CompleteOnboarding(userRepository, addressRepository, createIdAdapter),
+            new LogoutUser(serviceAuthToken),
+            new GetAuthenticatedUser(serviceAuthToken, userRepository)
+        );
+
+        this.authRouter = new UserAuthRouter(server, authController, oauthProvider);
+        new OnboardingRouter(server, authController, validator, this.authRouter);
     }
 }

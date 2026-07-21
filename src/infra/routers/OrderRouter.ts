@@ -1,32 +1,89 @@
 import { OrderController } from "../controller/OrderController";
-import { ServiceAuthToken } from "../security/ServiceAuthToken";
-import { ServerPort } from "../server/ServerPort";
+import { HttpErrorMapper } from "../shared/errors/HttpErrorMapper";
+import { IRequest, middleWare, ServerPort } from "../server/ServerPort";
+import { CheckoutOrderData, OrderValidator } from "../validators/OrderValidator";
+import { SessionInjection, UserAuthRouter } from "./UserAuthRouter";
+
+type CheckoutInjection = { checkoutInput: CheckoutOrderData };
 
 export class OrderRouter {
-    constructor(private server:ServerPort, private controller:OrderController) {
-        this.setupRouters()
+    constructor(
+        private server: ServerPort,
+        private controller: OrderController,
+        private validator: OrderValidator,
+        private authRouter: UserAuthRouter
+    ) {
+        this.boot();
     }
-    setupRouters(){
-        this.server.addRouter("post", "/createOrder", async (req,res)=>{
-        try{
-            // const id = await this.verifyToken(req.cookies.tokenUser)
-            const id = req.body.idUser
-            console.log(id);
-            
-            const order = await this.controller.createOrder({
-                userId: id,
-                items: req.body.items
-            })
-            res.json(order)
-        }catch(e:any){
-            console.log(e);
-            
-            res.status(401).send("acesso não autorizado")
+
+    private boot() {
+        this.server.addRouter(
+            "post",
+            "/order/checkout",
+            this.authRouter.requireSession,
+            this.authRouter.requireCompletedOnboarding,
+            this.validateCheckoutInput,
+            this.checkout
+        );
+        this.server.addRouter("get", "/order/my", this.authRouter.requireSession, this.myOrders);
+        this.server.addRouter(
+            "get",
+            "/order/:id/payment-status",
+            this.authRouter.requireSession,
+            this.paymentStatus
+        );
+    }
+
+    private validateCheckoutInput: middleWare = async (req, res, next) => {
+        try {
+            const data = this.validator.validateCheckout(req.body);
+            (req as IRequest<any, any, any, CheckoutInjection>).checkoutInput = data;
+            next();
+        } catch (error) {
+            const { status, body } = HttpErrorMapper.toHttp(error);
+            res.status(status).json(body);
         }
-        })
-    }
-    // private async verifyToken(token:string):Promise<string>{
-    //     const tokenUser = await this.serviceToken.verifySessionToken(token) as any
-    //     return tokenUser.id
-    // }
+    };
+
+    private checkout: middleWare = async (req, res) => {
+        try {
+            const { authenticatedUser, checkoutInput } = req as IRequest<
+                any,
+                any,
+                any,
+                SessionInjection & CheckoutInjection
+            >;
+            const result = await this.controller.checkout({
+                userId: authenticatedUser.id,
+                items: checkoutInput.items,
+            });
+            res.status(201).json(result);
+        } catch (error) {
+            const { status, body } = HttpErrorMapper.toHttp(error);
+            res.status(status).json(body);
+        }
+    };
+
+    private myOrders: middleWare = async (req, res) => {
+        try {
+            const { authenticatedUser } = req as IRequest<any, any, any, SessionInjection>;
+            const result = await this.controller.myOrders(authenticatedUser.id);
+            res.json(result);
+        } catch (error) {
+            const { status, body } = HttpErrorMapper.toHttp(error);
+            res.status(status).json(body);
+        }
+    };
+
+    private paymentStatus: middleWare = async (req, res) => {
+        try {
+            const { authenticatedUser } = req as IRequest<any, any, any, SessionInjection>;
+            const { id } = req.params;
+            const result = await this.controller.paymentStatus(id, authenticatedUser.id);
+            res.json(result);
+        } catch (error) {
+            const { status, body } = HttpErrorMapper.toHttp(error);
+            res.status(status).json(body);
+        }
+    };
 }

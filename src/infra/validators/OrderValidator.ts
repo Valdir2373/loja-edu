@@ -1,63 +1,63 @@
-import { OrderInput } from "../../app/orders/dto/OrderInput";
+import { CheckoutOrderInput } from "../../app/orders/dto/CheckoutOrderInput";
 import { ValidationError } from "../shared/errors/ValidationError";
 import { DTOBuilderAndValidator } from "../shared/validators/DTOBuilderAndValidator";
 import { ZodDTOBuilderAndValidator } from "../shared/validators/ZodDTOBuilderAndValidator";
 
-export class OrderValidator {
+export type CheckoutOrderData = Omit<CheckoutOrderInput, "userId">;
 
-    constructor() {}
-    
+export class OrderValidator {
     private createBuilder(): DTOBuilderAndValidator {
         return new ZodDTOBuilderAndValidator();
     }
 
-    validate(data: unknown): Omit<OrderInput, 'userId'> {
+    validateCheckout(data: unknown): CheckoutOrderData {
         const builder = this.createBuilder();
-
-        builder.defineSchema(
-            {
-                name: "items",
-                type: "array",
+        builder.defineSchema({
+            name: "items",
+            type: "array",
+            required: true,
+            requiredMessage: "A lista de itens é obrigatória.",
+            minItems: 1,
+            minItemsMessage: "É necessário informar ao menos um item.",
+            items: {
+                name: "item",
+                type: "object",
                 required: true,
-                requiredMessage: "A lista de itens é obrigatória.",
-                items: {
-                    name: "item",
-                    type: "object",
-                    required: true,
-                    fields: [
-                        { 
-                            name: "productId", 
-                            type: "string", 
-                            required: true, 
-                            uuid: true,
-                            message: "O ID do produto deve ser um UUID válido." 
-                        },
-                        { 
-                            name: "quantity", 
-                            type: "number", 
-                            required: true, 
-                            positive: true, 
-                            integer: true,
-                            message: "A quantidade deve ser um número inteiro positivo." 
-                        }
-                    ]
-                }
-            } as any 
-        );
-
+                fields: [
+                    {
+                        name: "productId",
+                        type: "string",
+                        required: true,
+                        uuid: true,
+                        message: "O ID do produto deve ser um UUID válido.",
+                    },
+                    {
+                        name: "quantity",
+                        type: "number",
+                        required: true,
+                        positive: true,
+                        integer: true,
+                        message: "A quantidade deve ser um número inteiro positivo.",
+                    },
+                ],
+            },
+        } as any);
         return builder.validateAndTransform(data as any);
     }
 
-    formatError(error: any): Record<string, string[]> {
+    formatError(error: unknown): Record<string, string[]> {
         if (error instanceof ValidationError) {
-            return error.details.reduce((acc: Record<string, string[]>, issue: any) => {
-                const path = issue.path || "general";
-                if (!acc[path]) acc[path] = [];
-                acc[path].push(issue.message);
-                return acc;
-            }, {});
+            const details = error.details as unknown as Record<string, { _errors?: string[] }>;
+            const formatted: Record<string, string[]> = {};
+            Object.keys(details).forEach((key) => {
+                if (key === "_errors") return;
+                const fieldError = details[key];
+                if (fieldError && Array.isArray(fieldError._errors)) {
+                    formatted[key] = fieldError._errors;
+                }
+            });
+            return formatted;
         }
-        
         return { general: ["Ocorreu um erro inesperado na validação dos dados."] };
     }
 }

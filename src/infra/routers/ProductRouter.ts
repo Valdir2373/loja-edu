@@ -1,8 +1,9 @@
 import { ProductInput } from "../../app/products/dto/ProductInput";
 import { ProductController } from "../controller/ProductController";
+import { HttpErrorMapper } from "../shared/errors/HttpErrorMapper";
 import { IRequest, middleWare, ServerPort } from "../server/ServerPort";
-import { methodHttp } from "../server/ServerPort";
 import { ProductValidator } from "../validators/ProductValidator";
+import { UserAuthRouter } from "./UserAuthRouter";
 
 type ProductInjection = { productInput: ProductInput };
 
@@ -10,46 +11,76 @@ export class ProductRouter {
     constructor(
         private server: ServerPort,
         private productController: ProductController,
-        private validator: ProductValidator
+        private validator: ProductValidator,
+        private authRouter: UserAuthRouter
     ) {
         this.boot();
     }
 
     private boot() {
-        this.registerRouterProductInput("post", "/product/", this.createProduct.bind(this));
-        this.server.addRouter("put", "/product/:id", this.updateProduct.bind(this));
-        this.server.addRouter("delete", "/product/:id", this.deleteProduct.bind(this));
-        this.server.addRouter("get", "/product/:id", this.getById.bind(this));
-        this.server.addRouter("get", "/product/", this.getAll.bind(this));
+        this.server.addRouter(
+            "post",
+            "/product/",
+            this.authRouter.requireSession,
+            this.authRouter.requireAdmin,
+            this.validatorProductInput,
+            this.createProduct
+        );
+        this.server.addRouter(
+            "put",
+            "/product/:id",
+            this.authRouter.requireSession,
+            this.authRouter.requireAdmin,
+            this.updateProduct
+        );
+        this.server.addRouter(
+            "delete",
+            "/product/:id",
+            this.authRouter.requireSession,
+            this.authRouter.requireAdmin,
+            this.deleteProduct
+        );
+        this.server.addRouter("get", "/product/:id", this.getById);
+        this.server.addRouter("get", "/product/", this.getAll);
     }
 
     private deleteProduct: middleWare = async (req, res) => {
-        const { id } = req.params;
-        if(typeof id != "string" || id == "undefined" || !id)
-            return res.status(400).json({message:"Error bad request, I need id"})
-        console.log("DEBUG ID RECEBIDO:", id);
-        await this.productController.delete(id);
-        res.status(204).send();
-    }
+        try {
+            const { id } = req.params;
+            if (typeof id !== "string" || !id) {
+                return res.status(400).json({ error: "Id do produto é obrigatório." });
+            }
+            await this.productController.delete(id);
+            res.status(204).send();
+        } catch (error) {
+            const { status, body } = HttpErrorMapper.toHttp(error);
+            res.status(status).json(body);
+        }
+    };
 
     private getById: middleWare = async (req, res) => {
-        const id = req.params.id
-        if(typeof id != "string" || id == "undefined" || !id)
-            return res.status(400).json({message:"Error bad request, I need id"})
-        const product = await this.productController.getById(req.params.id);
-        product ? res.json(product) : res.status(404).json({ message: "Not found" });
-    }
+        try {
+            const { id } = req.params;
+            if (typeof id !== "string" || !id) {
+                return res.status(400).json({ error: "Id do produto é obrigatório." });
+            }
+            const product = await this.productController.getById(id);
+            res.json(product);
+        } catch (error) {
+            const { status, body } = HttpErrorMapper.toHttp(error);
+            res.status(status).json(body);
+        }
+    };
 
     private getAll: middleWare = async (req, res) => {
-        
-        const products = await this.productController.getAll();
-        console.log(products);
-        res.json(products);
-    }
-
-    private registerRouterProductInput(methodHttp:methodHttp, path:string, ...callback:middleWare[]){
-        this.server.addRouter(methodHttp,path,this.validatorProductInput.bind(this),...callback)
-    }
+        try {
+            const products = await this.productController.getAll();
+            res.json(products);
+        } catch (error) {
+            const { status, body } = HttpErrorMapper.toHttp(error);
+            res.status(status).json(body);
+        }
+    };
 
     private validatorProductInput: middleWare = async (req, res, next) => {
         try {
@@ -57,30 +88,30 @@ export class ProductRouter {
             (req as IRequest<any, any, any, ProductInjection>).productInput = data;
             next();
         } catch (error) {
-            const details = this.validator.formatError(error);
-            res.status(400).json({ message: "Validation failed", details });
+            const { status, body } = HttpErrorMapper.toHttp(error);
+            res.status(status).json(body);
         }
-    }
+    };
 
     private createProduct: middleWare = async (req, res) => {
         try {
             const input = (req as IRequest<any, any, any, ProductInjection>).productInput;
             const result = await this.productController.create(input);
             res.status(201).json(result);
-        } catch (error: any) {
-            res.status(500).json({ message: error.message });
+        } catch (error) {
+            const { status, body } = HttpErrorMapper.toHttp(error);
+            res.status(status).json(body);
         }
-    }
+    };
 
     private updateProduct: middleWare = async (req, res) => {
         try {
             const { id } = req.params;
-            const input = req.body;
-            
-            await this.productController.update(id, input);
-            res.status(200).send("Atualizado com sucesso");
-        } catch (error: any) {
-            res.status(500).json({ message: error.message });
+            const result = await this.productController.update(id, req.body);
+            res.status(200).json(result);
+        } catch (error) {
+            const { status, body } = HttpErrorMapper.toHttp(error);
+            res.status(status).json(body);
         }
-    }
+    };
 }

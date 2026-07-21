@@ -1,3 +1,3 @@
 import { AppModule } from "./infra/module/AppModule";
 const app = new AppModule()
-app.listen(9090)
+app.listen(3000)

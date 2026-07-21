@@ -8,7 +8,6 @@ export class RedisCacheAdapter extends CachePort {
     constructor() {
         super();
         const secrets = ConfigCache.getSecrets()
-        console.log(`Conectando em: ${secrets.host}:${secrets.port}`);
         this.client = createClient({
             username: 'default',
             password: secrets.key, 
@@ -20,15 +19,13 @@ export class RedisCacheAdapter extends CachePort {
             if (retries > 20) {
                 return new Error('Limite de tentativas de reconexão atingido');
             }
-            return Math.min(retries * 50, 2000); // Tenta a cada 50ms, 100ms, até 2s
+            return Math.min(retries * 50, 2000);
         }
             }
         });
 
         this.client.on('error', (err) => console.error('Redis Client Error', err));
         this.client.connect().catch(console.error);
-        console.log("Redis Rodando");
-        
     }
 
     async connect(): Promise<void> {

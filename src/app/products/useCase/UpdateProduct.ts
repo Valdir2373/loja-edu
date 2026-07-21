@@ -1,20 +1,27 @@
 import { RepositoryPort } from "../../../domain/repository/RepositoryPort";
-import { Product } from "../../../domain/entites/Product"
+import { Product } from "../../../domain/entites/Product";
+import { NotFoundError } from "../../../domain/errors/NotFoundError";
 import { ProductInput } from "../dto/ProductInput";
+import { ProductOutput } from "../dto/ProductOutput";
 
 export class UpdateProduct {
     constructor(private repo: RepositoryPort<Product>) {}
 
-    async execute(id: string, input: Partial<ProductInput>) {
+    async execute(id: string, input: Partial<ProductInput>): Promise<ProductOutput> {
         const product = await this.repo.findById(id);
-        if (!product) throw new Error("Produto não encontrado.");
+        if (!product) {
+            throw new NotFoundError("Produto não encontrado.");
+        }
 
-        if (input.name) product.name = input.name;
-        if (input.price) product.price = input.price;
-        if (input.stock !== undefined) product.stock = input.stock;
-
-        product.markAsUpdated();
-
+        product.updateFields(input);
         await this.repo.update(id, product);
+
+        return {
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            discount: product.discount,
+            stock: product.stock,
+        };
     }
 }

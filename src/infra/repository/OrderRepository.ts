@@ -1,86 +1,116 @@
 import { DataAccessPort } from "../../domain/database/DataAcess";
-import { Order } from "../../domain/entites/Order";
+import { Order, OrderItem, OrderStatus } from "../../domain/entites/Order";
+import { Money } from "../../domain/money/Money";
 import { FilterQuery, RepositoryPort } from "../../domain/repository/RepositoryPort";
 
 export class OrderRepository extends RepositoryPort<Order> {
     private readonly collectionName = "pedidos";
+    private readonly itemsCollectionName = "itens_pedido";
 
     constructor(protected readonly dataAccess: DataAccessPort) {
         super(dataAccess);
     }
 
     async save(entity: Order): Promise<string | number | undefined> {
-        const data = {
-            id: entity.id,
-            userId: entity.userId,
-            items: entity.items,
-            total: entity.totalAmount,
-            status: entity.status,
-            created_at: entity.created_at,
-            updated_at: entity.updated_at,
-            deleted_at: entity.deleted_at
-        };
-        return await this.dataAccess.create(this.collectionName, data);
+        const id = await this.dataAccess.create(this.collectionName, this.toOrderColumns(entity));
+        await Promise.all(entity.items.map((item) => this.saveItem(entity.id, item)));
+        return id;
     }
 
     async findById(id: string): Promise<Order | undefined> {
-        const data = await this.dataAccess.findOne<any>(this.collectionName, { id });
-        if (!data) return undefined;
-        return this.mapToEntity(data);
+        const data = await this.dataAccess.findOne<Record<string, unknown>>(this.collectionName, { id } as never);
+        return data ? this.hydrate(data) : undefined;
     }
 
     async findAll(): Promise<Order[]> {
-        const dataList = await this.dataAccess.findMany<any>(this.collectionName);
-        return dataList.map(data => this.mapToEntity(data));
+        const rows = await this.dataAccess.findMany<Record<string, unknown>>(this.collectionName);
+        return Promise.all(rows.map((row) => this.hydrate(row)));
     }
 
     async findMany(query: FilterQuery<Order>): Promise<Order[]> {
-        const dataList = await this.dataAccess.findMany<any>(this.collectionName, query as any);
-        return dataList.map(data => this.mapToEntity(data));
+        const rows = await this.dataAccess.findMany<Record<string, unknown>>(
+            this.collectionName,
+            this.toColumnQuery(query)
+        );
+        return Promise.all(rows.map((row) => this.hydrate(row)));
     }
 
     async findBy(query: FilterQuery<Order>): Promise<Order | null> {
-        const data = await this.dataAccess.findOne<any>(this.collectionName, query as any);
-        if (!data) return null;
-        return this.mapToEntity(data);
+        const data = await this.dataAccess.findOne<Record<string, unknown>>(
+            this.collectionName,
+            this.toColumnQuery(query)
+        );
+        return data ? await this.hydrate(data) : null;
     }
 
     async update(id: string, entity: Partial<Order>): Promise<void> {
-        const updateData = { 
-            ...entity, 
-            updated_at: new Date() 
-        };
-        
-        if ('totalAmount' in updateData) {
-            (updateData as any).total = (updateData as any).totalAmount;
-            delete (updateData as any).totalAmount;
-        }
-
-        await this.dataAccess.update(this.collectionName, { id } as any, updateData as any);
+        await this.dataAccess.update(this.collectionName, { id } as never, this.toColumnQuery(entity));
     }
 
     async exists(filter: Partial<Order>): Promise<boolean> {
-        const count = await this.dataAccess.count(this.collectionName, filter as any);
-        return count > 0;
+        return (await this.dataAccess.count(this.collectionName, this.toColumnQuery(filter))) > 0;
     }
 
     async delete(id: string): Promise<number> {
-        return await this.dataAccess.update(this.collectionName, { id } as any, {
-            deleted_at: new Date(),
-            updated_at: new Date()
-        } as any);
+        return await this.dataAccess.remove(this.collectionName, { id });
     }
 
-    private mapToEntity(data: any): Order {
+    private async hydrate(row: Record<string, unknown>): Promise<Order> {
+        const itemRows = await this.dataAccess.findMany<Record<string, unknown>>(this.itemsCollectionName, {
+            pedido_id: row.id,
+        } as never);
+        return this.mapToEntity(row, itemRows);
+    }
+
+    private async saveItem(orderId: string, item: OrderItem): Promise<void> {
+        await this.dataAccess.create(this.itemsCollectionName, {
+            pedido_id: orderId,
+            produto_id: item.productId,
+            product_name: item.productName,
+            quantity: item.quantity,
+            price_at_purchase: Money.toDecimalString(item.priceCents),
+        });
+    }
+
+    private toColumnQuery(entity: Partial<Order>): Record<string, unknown> {
+        const columns: Record<string, unknown> = {};
+        if (entity.id !== undefined) columns.id = entity.id;
+        if (entity.userId !== undefined) columns.user_id = entity.userId;
+        if (entity.addressId !== undefined) columns.address_id = entity.addressId;
+        if (entity.status !== undefined) columns.status = entity.status;
+        if (entity.paymentId !== undefined) columns.payment_id = entity.paymentId;
+        if (entity.totalCents !== undefined) columns.total = Money.toDecimalString(entity.totalCents);
+        return columns;
+    }
+
+    private toOrderColumns(entity: Order): Record<string, unknown> {
+        return {
+            id: entity.id,
+            user_id: entity.userId,
+            address_id: entity.addressId,
+            total: Money.toDecimalString(entity.totalCents),
+            status: entity.status,
+            payment_id: entity.paymentId,
+        };
+    }
+
+    private mapToEntity(data: Record<string, unknown>, itemRows: Record<string, unknown>[]): Order {
+        const items: OrderItem[] = itemRows.map((row) => ({
+            productId: row.produto_id as string,
+            productName: row.product_name as string,
+            priceCents: Money.fromDecimalString(String(row.price_at_purchase)),
+            quantity: row.quantity as number,
+        }));
         return new Order(
-            data.id,
-            data.userId,
-            data.items,
-            data.total ?? data.totalAmount,
-            data.status,
-            new Date(data.created_at),
-            new Date(data.updated_at),
-            data.deleted_at ? new Date(data.deleted_at) : null
+            data.id as string,
+            data.user_id as string,
+            data.address_id as string,
+            items,
+            Money.fromDecimalString(String(data.total)),
+            data.status as OrderStatus,
+            (data.payment_id as string | null) ?? null,
+            data.created_at ? new Date(data.created_at as string) : new Date(),
+            data.updated_at ? new Date(data.updated_at as string) : new Date()
         );
     }
 }

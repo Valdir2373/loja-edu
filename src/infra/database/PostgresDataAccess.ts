@@ -19,18 +19,38 @@ export class PostgresDataAccess extends DataAccessPort {
 }
 
   
+  private readonly retryableConnectionErrorCodes = ['ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'CONNECT_TIMEOUT'];
+  private readonly maxConnectionAttempts = 3;
+
   private async executeQuery<T>(callback: (sql: postgres.Sql) => Promise<T>): Promise<T> {
-  const sql = postgres(this.connectionOptions, {
-    ssl: { rejectUnauthorized: false }, 
-    connect_timeout: 10,
-    max: 1 
-  });
-  try {
-    return await callback(sql);
-  } finally {
-    await sql.end();
+    for (let attempt = 1; attempt <= this.maxConnectionAttempts; attempt++) {
+      const sql = postgres(this.connectionOptions, {
+        ssl: { rejectUnauthorized: false },
+        connect_timeout: 10,
+        max: 1
+      });
+      try {
+        return await callback(sql);
+      } catch (error) {
+        if (!this.isRetryableConnectionError(error) || attempt === this.maxConnectionAttempts) {
+          throw error;
+        }
+        await this.wait(attempt * 300);
+      } finally {
+        await sql.end();
+      }
+    }
+    throw new Error('Falha ao conectar ao banco de dados após múltiplas tentativas.');
   }
-}
+
+  private isRetryableConnectionError(error: unknown): boolean {
+    const code = (error as { code?: string })?.code;
+    return typeof code === 'string' && this.retryableConnectionErrorCodes.includes(code);
+  }
+
+  private wait(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
 private buildWhere(sql: postgres.Sql, query: Record<string, any>) {
   const keys = Object.keys(query);

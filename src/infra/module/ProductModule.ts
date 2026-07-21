@@ -3,6 +3,7 @@ import { ProductController } from "../controller/ProductController";
 import { DependencyInjection } from "../pattern/DI";
 import { ProductRepository } from "../repository/ProductRepository";
 import { ProductRouter } from "../routers/ProductRouter";
+import { UserAuthRouter } from "../routers/UserAuthRouter";
 import { ServerPort } from "../server/ServerPort";
 
 import { CreateProduct } from "../../app/products/useCase/CreateProduct";
@@ -18,7 +19,7 @@ export class ProductModule {
     private server:ServerPort
     private db:DataAccessPort
     private productValidator: ProductValidator
-    constructor(private di:DependencyInjection) {
+    constructor(private di:DependencyInjection, private authRouter: UserAuthRouter) {
         const validator = this.di.getDependency<DTOBuilderAndValidator>(DTOBuilderAndValidator)        
         this.productValidator = new ProductValidator(validator)
         this.db = this.di.getDependency(DataAccessPort)
@@ -32,7 +33,7 @@ export class ProductModule {
         new GetAllProducts(productRepository),
 
         )
-        new ProductRouter(this.server,controller,this.productValidator)
+        new ProductRouter(this.server,controller,this.productValidator,this.authRouter)
 
     }
 }

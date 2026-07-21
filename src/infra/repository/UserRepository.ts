@@ -1,53 +1,77 @@
 import { FilterQuery, RepositoryPort } from "../../domain/repository/RepositoryPort";
 import { DataAccessPort } from "../../domain/database/DataAcess";
-import { User } from "../../domain/entites/User";
+import { User, UserRole } from "../../domain/entites/User";
 
 export class UserRepository extends RepositoryPort<User> {
-
-  constructor(protected readonly dataAccess: DataAccessPort) {
-    super(dataAccess);
-  }
-
-
-  async findBy(query: Partial<User>): Promise<User | null> {
-      const user = await this.dataAccess.findOne<User>('users', query);
-      return user || null;
+    constructor(protected readonly dataAccess: DataAccessPort) {
+        super(dataAccess);
     }
 
-  async save(entity: User): Promise<string | number | undefined> {
-    return await this.dataAccess.create("users", {
-      id: entity.id,
-      name: entity.name,
-      email: entity.email,
-      password: entity.password
-    });
-  }
+    async save(entity: User): Promise<string | number | undefined> {
+        return await this.dataAccess.create("users", {
+            id: entity.id,
+            email: entity.email,
+            username: entity.username,
+            full_name: entity.fullName,
+            role: entity.role,
+            onboarding_completed: entity.onboardingCompleted,
+        });
+    }
 
-  async findMany(query: FilterQuery<User>): Promise<User[]> {
-  const users = await this.dataAccess.findMany<User>("users", query as any);
-  return users.map(u => new User(u.id, u.name, u.email, u.password));
-}
+    async findBy(query: FilterQuery<User>): Promise<User | null> {
+        const data = await this.dataAccess.findOne<Record<string, unknown>>("users", this.toColumnQuery(query));
+        return data ? this.mapToEntity(data) : null;
+    }
 
-  async findById(id: string): Promise<User | undefined> {
-    const data = await this.dataAccess.findOne<User>("users", { id } as any);
-    if (!data) return undefined;
-    return new User(data.id, data.name, data.email, data.password);
-  }
+    async findMany(query: FilterQuery<User>): Promise<User[]> {
+        const rows = await this.dataAccess.findMany<Record<string, unknown>>("users", this.toColumnQuery(query));
+        return rows.map((row) => this.mapToEntity(row));
+    }
 
-  async findAll(): Promise<User[]> {
-    const users = await this.dataAccess.findMany<User>("users");
-    return users.map(u => new User(u.id, u.name, u.email, u.password));
-  }
+    async findById(id: string): Promise<User | undefined> {
+        const data = await this.dataAccess.findOne<Record<string, unknown>>("users", { id } as never);
+        return data ? this.mapToEntity(data) : undefined;
+    }
 
-  async update(id: string, entity: Partial<User>): Promise<void> {
-    await this.dataAccess.update("users", { id } as any, entity);
-  }
+    async findAll(): Promise<User[]> {
+        const rows = await this.dataAccess.findMany<Record<string, unknown>>("users");
+        return rows.map((row) => this.mapToEntity(row));
+    }
 
-  async exists(filter: Partial<User>): Promise<boolean> {
-    return (await this.dataAccess.count("users", filter as any)) > 0;
-  }
+    async update(id: string, entity: Partial<User>): Promise<void> {
+        await this.dataAccess.update("users", { id } as never, this.toColumnQuery(entity));
+    }
 
-  async delete(id: string): Promise<number> {
-    return await this.dataAccess.remove("users", { id } as any);
-  }
+    async exists(filter: Partial<User>): Promise<boolean> {
+        return (await this.dataAccess.count("users", this.toColumnQuery(filter))) > 0;
+    }
+
+    async delete(id: string): Promise<number> {
+        return await this.dataAccess.remove("users", { id });
+    }
+
+    private toColumnQuery(entity: Partial<User>): Record<string, unknown> {
+        const columns: Record<string, unknown> = {};
+        if (entity.id !== undefined) columns.id = entity.id;
+        if (entity.email !== undefined) columns.email = entity.email;
+        if (entity.username !== undefined) columns.username = entity.username;
+        if (entity.fullName !== undefined) columns.full_name = entity.fullName;
+        if (entity.role !== undefined) columns.role = entity.role;
+        if (entity.onboardingCompleted !== undefined) columns.onboarding_completed = entity.onboardingCompleted;
+        return columns;
+    }
+
+    private mapToEntity(data: Record<string, unknown>): User {
+        return new User(
+            data.id as string,
+            data.email as string,
+            data.username as string,
+            (data.full_name as string | null) ?? null,
+            (data.role as UserRole) ?? UserRole.CUSTOMER,
+            (data.onboarding_completed as boolean) ?? false,
+            data.created_at ? new Date(data.created_at as string) : new Date(),
+            data.updated_at ? new Date(data.updated_at as string) : new Date(),
+            data.deleted_at ? new Date(data.deleted_at as string) : null
+        );
+    }
 }

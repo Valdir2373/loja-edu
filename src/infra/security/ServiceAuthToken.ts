@@ -1,4 +1,5 @@
 import { CachePort } from "../../domain/database/CachePort";
+import { UnauthorizedError } from "../../domain/errors/UnauthorizedError";
 import { DependencyInjection } from "../pattern/DI";
 import { AuthTokenManager } from "./AuthTokenManager";
 import { TokenGenerationOptions } from "./IAuthTokenManager";
@@ -27,21 +28,32 @@ export class ServiceAuthToken {
 
 
     async verifySessionToken<T extends object>(token: string): Promise<T> {
-        const decoded = await this.tokenManager.verifyToken<T>(token);
+        const decoded = await this.verifyOrThrowUnauthorized(() => this.tokenManager.verifyToken<T>(token));
         await this.ensureNotRevoked(token);
         return decoded;
     }
 
     async verifyRefreshToken<T extends object>(token: string): Promise<T> {
-        const decoded = await this.tokenManager.verifyRefreshToken<T>(token);
+        const decoded = await this.verifyOrThrowUnauthorized(() => this.tokenManager.verifyRefreshToken<T>(token));
         await this.ensureNotRevoked(token);
         return decoded;
     }
 
     async verifyTimeSetToken<T extends object>(token: string): Promise<T> {
-        const decoded = await this.tokenManager.verifyTimeSetToken<T>(token);
+        const decoded = await this.verifyOrThrowUnauthorized(() => this.tokenManager.verifyTimeSetToken<T>(token));
         await this.ensureNotRevoked(token);
         return decoded;
+    }
+
+    private async verifyOrThrowUnauthorized<T>(verify: () => Promise<T>): Promise<T> {
+        try {
+            return await verify();
+        } catch (error) {
+            if (error instanceof Error && error.name === "TokenExpiredError") {
+                throw new UnauthorizedError("Sessão expirada. Faça login novamente.");
+            }
+            throw new UnauthorizedError("Sessão inválida. Faça login novamente.");
+        }
     }
 
 
@@ -52,7 +64,7 @@ export class ServiceAuthToken {
     private async ensureNotRevoked(token: string): Promise<void> {
         const isRevoked = await this.cache.get(`blacklist:${token}`);
         if (isRevoked) {
-            throw new Error("Token revogado.");
+            throw new UnauthorizedError("Token revogado.");
         }
     }
 

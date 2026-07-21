@@ -1,17 +1,20 @@
 import { DependencyInjection } from "../pattern/DI";
 import { ServerPort } from "../server/ServerPort";
+import { ViewController } from "../controller/ViewController";
+
+const HARNESS_ROUTE_PREFIX = "/app";
 
 export class ViewModule {
-    private server:ServerPort
-    constructor(private di:DependencyInjection){
-        this.server = this.di.getDependency(ServerPort)
-        this.bot()
+    private server: ServerPort;
+    private controller: ViewController;
+
+    constructor(private di: DependencyInjection) {
+        this.server = this.di.getDependency(ServerPort);
+        this.controller = new ViewController();
+        this.boot();
     }
 
-    private bot(){
-        this.server.addRouter("get","/",(req,res)=>{
-            res.send("<h1>oi</h1>")
-        })
+    private boot() {
+        this.server.serveStatic(HARNESS_ROUTE_PREFIX, this.controller.getStaticDirectory());
     }
-
 }

@@ -1,39 +1,102 @@
+import { BusinessRuleError } from "../errors/BusinessRuleError";
+import { ConflictError } from "../errors/ConflictError";
+import { CreateId } from "../interface/CreateId";
+
+export const OrderStatus = {
+    PENDING_PAYMENT: "PENDING_PAYMENT",
+    PAID: "PAID",
+    REJECTED: "REJECTED",
+    EXPIRED: "EXPIRED",
+    CANCELLED: "CANCELLED",
+    REFUNDED: "REFUNDED",
+    CHARGEBACK: "CHARGEBACK",
+} as const;
+
+export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
+
+export interface OrderItem {
+    productId: string;
+    productName: string;
+    priceCents: number;
+    quantity: number;
+}
+
 export class Order {
-  private _cachedTotal: number | null = null;
-  constructor(
-    public id: string,
-    public userId: string,
-    public items: { productId: string; quantity: number; priceAtPurchase: number }[],
-    public total: number,
-    public status: 'PENDING' | 'PAID' | 'SHIPPED' | 'CANCELLED',
-    public created_at: Date = new Date(),
-    public updated_at: Date = new Date(),
-    public deleted_at: Date | null = null 
-  ) {
-    this._cachedTotal = total;
-  }
-  get totalAmount(): number {
-    if (this._cachedTotal !== null) {
-      return this._cachedTotal;
+    constructor(
+        public readonly id: string,
+        public readonly userId: string,
+        public readonly addressId: string,
+        public readonly items: OrderItem[],
+        public readonly totalCents: number,
+        public status: OrderStatus,
+        public paymentId: string | null = null,
+        public readonly created_at: Date = new Date(),
+        public updated_at: Date = new Date()
+    ) {}
+
+    static build(createId: CreateId, userId: string, addressId: string, items: OrderItem[]): Order {
+        if (items.length === 0) {
+            throw new BusinessRuleError("O pedido precisa ter ao menos um item.");
+        }
+        const totalCents = items.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
+        return new Order(createId(), userId, addressId, items, totalCents, OrderStatus.PENDING_PAYMENT);
     }
-    this._cachedTotal = this.items.reduce((acc, item) => {
-      return acc + (item.priceAtPurchase * item.quantity);
-    }, 0);
-    return this._cachedTotal;
-  }
-  markAsUpdated(): void {
-    this.updated_at = new Date();
-  }
-  softDelete(): void {
-    this.deleted_at = new Date();
-  }
-  addItem(item: { productId: string; quantity: number; priceAtPurchase: number }): void {
-    this.items.push(item);
-    this._cachedTotal = null; 
-    this.markAsUpdated();
-  }
-  refreshTotal(): void {
-    this._cachedTotal = null;
-    this.total = this.totalAmount;
-  }
+
+    attachPayment(paymentId: string): void {
+        if (this.status !== OrderStatus.PENDING_PAYMENT) {
+            throw new ConflictError("Só é possível vincular pagamento a um pedido aguardando pagamento.");
+        }
+        if (this.paymentId) {
+            throw new ConflictError("Pedido já possui um pagamento vinculado.");
+        }
+        this.paymentId = paymentId;
+        this.updated_at = new Date();
+    }
+
+    markAsPaid(paidAmountCents: number): void {
+        if (this.status !== OrderStatus.PENDING_PAYMENT) {
+            throw new ConflictError("Só é possível confirmar pagamento de um pedido aguardando pagamento.");
+        }
+        if (paidAmountCents !== this.totalCents) {
+            throw new BusinessRuleError("Valor pago não corresponde ao total do pedido.");
+        }
+        this.status = OrderStatus.PAID;
+        this.updated_at = new Date();
+    }
+
+    markAsRejected(): void {
+        this.transitionFromPending(OrderStatus.REJECTED, "recusado");
+    }
+
+    markAsExpired(): void {
+        this.transitionFromPending(OrderStatus.EXPIRED, "expirado");
+    }
+
+    markAsCancelled(): void {
+        this.transitionFromPending(OrderStatus.CANCELLED, "cancelado");
+    }
+
+    markAsRefunded(): void {
+        this.transitionFromPaid(OrderStatus.REFUNDED, "estornado");
+    }
+
+    markAsChargedBack(): void {
+        this.transitionFromPaid(OrderStatus.CHARGEBACK, "contestado (chargeback)");
+    }
+
+    private transitionFromPending(next: OrderStatus, label: string): void {
+        if (this.status !== OrderStatus.PENDING_PAYMENT) {
+            throw new ConflictError(`Só é possível marcar como ${label} um pedido aguardando pagamento.`);
+        }
+        this.status = next;
+        this.updated_at = new Date();
+    }
+
+    private transitionFromPaid(next: OrderStatus, label: string): void {
+        if (this.status !== OrderStatus.PAID) {
+            throw new ConflictError(`Só é possível marcar como ${label} um pedido já pago.`);
+        }
+        this.status = next;
+        this.updated_at = new Date();
+    }
 }

@@ -40,8 +40,10 @@ export class ZodDTOBuilderAndValidator extends DTOBuilderAndValidator {
       case "string":
         const stringField = field as StringFieldDefinition;
 let stringSchema = z.string({
-  required_error: stringField.requiredMessage || baseMessage || `${stringField.name} é obrigatório.`,
-  invalid_type_error: stringField.message || `${stringField.name} deve ser uma string.`,
+  error: (issue: any) =>
+    issue.input === undefined
+      ? stringField.requiredMessage || baseMessage || `${stringField.name} é obrigatório.`
+      : baseMessage || `${stringField.name} deve ser uma string.`,
 } as any); // <--- O "as any" silencia o TS(2769)
         if (stringField.minLength !== undefined)
           stringSchema = stringSchema.min(
@@ -88,12 +90,10 @@ let stringSchema = z.string({
       case "number":
         const numberField = field as NumberFieldDefinition;
         let numberSchema = z.number({
-          required_error:
-            numberField.requiredMessage ||
-            baseMessage ||
-            `${numberField.name} é obrigatório.`,
-          invalid_type_error:
-            numberField.message || `${numberField.name} deve ser um número.`,
+          error: (issue: any) =>
+            issue.input === undefined
+              ? numberField.requiredMessage || baseMessage || `${numberField.name} é obrigatório.`
+              : baseMessage || `${numberField.name} deve ser um número.`,
         } as any);
         if (numberField.min !== undefined)
           numberSchema = numberSchema.min(
@@ -133,25 +133,20 @@ let stringSchema = z.string({
       case "boolean":
         const booleanField = field as BooleanFieldDefinition;
         zodType = z.boolean({
-          required_error:
-            booleanField.requiredMessage ||
-            baseMessage ||
-            `${booleanField.name} é obrigatório.`,
-          invalid_type_error:
-            booleanField.message ||
-            `${booleanField.name} deve ser um booleano.`,
+          error: (issue: any) =>
+            issue.input === undefined
+              ? booleanField.requiredMessage || baseMessage || `${booleanField.name} é obrigatório.`
+              : baseMessage || `${booleanField.name} deve ser um booleano.`,
         } as any);
         break;
 
       case "date":
         const dateField = field as DateFieldDefinition;
         let dateSchema = z.date({
-          required_error:
-            dateField.requiredMessage ||
-            baseMessage ||
-            `${dateField.name} é obrigatória.`,
-          invalid_type_error:
-            dateField.message || `${dateField.name} deve ser uma data válida.`,
+          error: (issue: any) =>
+            issue.input === undefined
+              ? dateField.requiredMessage || baseMessage || `${dateField.name} é obrigatória.`
+              : baseMessage || `${dateField.name} deve ser uma data válida.`,
         } as any);
         if (dateField.minDate)
           dateSchema = dateSchema.min(
@@ -183,12 +178,10 @@ let stringSchema = z.string({
         }
         const itemSchema = this.buildSingleFieldSchema(arrayField.items);
         let arraySchema = z.array(itemSchema, {
-          required_error:
-            arrayField.requiredMessage ||
-            baseMessage ||
-            `${arrayField.name} é obrigatório.`,
-          invalid_type_error:
-            arrayField.message || `${arrayField.name} deve ser um array.`,
+          error: (issue: any) =>
+            issue.input === undefined
+              ? arrayField.requiredMessage || baseMessage || `${arrayField.name} é obrigatório.`
+              : baseMessage || `${arrayField.name} deve ser um array.`,
         } as any);
         if (arrayField.minItems !== undefined)
           arraySchema = arraySchema.min(
@@ -231,7 +224,7 @@ let stringSchema = z.string({
     }
 
     if (!field.required || forceOptional) {
-      zodType = zodType.optional();
+      zodType = zodType.nullable().optional();
     }
 
     return zodType;

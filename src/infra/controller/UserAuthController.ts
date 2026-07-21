@@ -1,34 +1,37 @@
-import { UserLoginInput } from "../../app/users/dto/UserLoginInput";
-import { GetUser } from "../../app/users/useCase/GetUser";
-import { LoginUser } from "../../app/users/useCase/LoginUser";
-import { VerifyEmail } from "../../app/users/useCase/VerifyEmail";
-import { ServiceAuthToken } from "../security/ServiceAuthToken";
+import { AuthenticateWithGoogleOutput } from "../../app/users/dto/AuthenticateWithGoogleOutput";
+import { CompleteOnboardingOutput } from "../../app/users/dto/CompleteOnboardingOutput";
+import { UserOutput } from "../../app/users/dto/UserOutput";
+import { AuthenticateWithGoogle } from "../../app/users/useCase/AuthenticateWithGoogle";
+import { CompleteOnboarding } from "../../app/users/useCase/CompleteOnboarding";
+import { GetAuthenticatedUser } from "../../app/users/useCase/GetAuthenticatedUser";
+import { LogoutUser } from "../../app/users/useCase/LogoutUser";
+import { OnboardingData } from "../validators/UserValidator";
 
 export class UserAuthController {
     constructor(
-        private loginUser: LoginUser,
-        private verifyEmailUseCase:VerifyEmail,
-        private getUser: GetUser,
-        private serviceToken: ServiceAuthToken,
+        private authenticateWithGoogle: AuthenticateWithGoogle,
+        private completeOnboardingUseCase: CompleteOnboarding,
+        private logoutUser: LogoutUser,
+        private getAuthenticatedUser: GetAuthenticatedUser
     ) {}
 
-    async login(input: UserLoginInput) {
-        const userOutput = await this.loginUser.execute(input);
-        const accessToken = this.serviceToken.generateToken({ id: userOutput.id });
-        const refreshToken = this.serviceToken.generateRefreshToken({ id: userOutput.id });
-        return {
-            accessToken,
-            refreshToken
-        };
-    }
-    async getById(id: string) {
-        return await this.getUser.execute(id);
+    async authenticateWithGoogleCode(code: string, redirectUri: string): Promise<AuthenticateWithGoogleOutput> {
+        return await this.authenticateWithGoogle.execute({ code, redirectUri });
     }
 
-    async verifyEmail(token: string) {
-        const payload = await this.serviceToken.verifyTimeSetToken<{ email: string }>(token);
-        await this.verifyEmailUseCase.execute(payload.email);
-        await this.serviceToken.revoke(token);
-        return { message: "E-mail verificado com sucesso" };
+    async resolveAuthenticatedUser(token: string): Promise<UserOutput> {
+        return await this.getAuthenticatedUser.execute({ token });
+    }
+
+    async completeOnboarding(userId: string, data: OnboardingData): Promise<CompleteOnboardingOutput> {
+        return await this.completeOnboardingUseCase.execute({
+            userId,
+            fullName: data.fullName,
+            addresses: data.addresses,
+        });
+    }
+
+    async logout(token: string): Promise<void> {
+        await this.logoutUser.execute({ token });
     }
 }

@@ -5,18 +5,24 @@ import { ServerExpressAdapter } from "../server/ServerExpressAdapter";
 import { ServerPort } from "../server/ServerPort";
 import { ProductModule } from "./ProductModule";
 import { UserModule } from "./UserModule";
+import { ViewModule } from "./ViewModule";
 import { ZodDTOBuilderAndValidator } from "../shared/validators/ZodDTOBuilderAndValidator";
 import { DTOBuilderAndValidator } from "../shared/validators/DTOBuilderAndValidator";
 import { AuthTokenManager } from "../security/AuthTokenManager";
 import { JsonwebtokenAuthTokenManager } from "../security/JsonwebtokenAuthTokenManager";
-import { PasswordHasher } from "../../domain/security/PasswordHasher";
-import { Argon2idHasher } from "../security/Argon2idHasher";
+import { OAuthProviderPort } from "../../domain/security/OAuthProviderPort";
+import { GoogleOAuthAdapter } from "../security/GoogleOAuthAdapter";
 import { SmtpEmailServiceAdapter } from "../email/SmptEmailServiceAdapter";
 import { EmailPort } from "../email/EmailPort";
 import { RedisCacheAdapter } from "../database/RedisCacheAdapter";
 import { CachePort } from "../../domain/database/CachePort";
 import { ServiceAuthToken } from "../security/ServiceAuthToken";
 import { OrderModule } from "./OrderModule";
+import { ConfigApp } from "../config/ConfigApp";
+import { DevModule } from "./DevModule";
+import { AdminModule } from "./AdminModule";
+import { PaymentGatewayPort } from "../../domain/payment/PaymentGatewayPort";
+import { MercadoPagoAdapter } from "../payment/MercadoPagoAdapter";
 
 
 export class AppModule {
@@ -31,8 +37,9 @@ export class AppModule {
         this.di.addDependency(new PostgresDataAccess(), DataAccessPort)
         this.di.addDependency(new ZodDTOBuilderAndValidator(), DTOBuilderAndValidator)
         this.di.addDependency(new JsonwebtokenAuthTokenManager(), AuthTokenManager)
-        this.di.addDependency(new Argon2idHasher(), PasswordHasher)
+        this.di.addDependency(new GoogleOAuthAdapter(), OAuthProviderPort)
         this.di.addDependency(new SmtpEmailServiceAdapter(), EmailPort)
+        this.di.addDependency(new MercadoPagoAdapter(), PaymentGatewayPort)
         this.serviceAuthToken = new ServiceAuthToken(this.di)
         this.server = this.di.getDependency(ServerPort)
         this.cache = this.di.getDependency(CachePort)
@@ -40,9 +47,14 @@ export class AppModule {
     }
     
     private modules(){
-        new ProductModule(this.di)
-        new UserModule(this.di,this.serviceAuthToken)
-        new OrderModule(this.di, this.serviceAuthToken)
+        const userModule = new UserModule(this.di,this.serviceAuthToken)
+        new ProductModule(this.di, userModule.authRouter)
+        const orderModule = new OrderModule(this.di, userModule.authRouter)
+        new AdminModule(this.di, userModule.authRouter, orderModule.controller)
+        if(ConfigApp.isDevelopment()){
+            new DevModule(this.di, userModule.authRouter)
+        }
+        new ViewModule(this.di)
     }
 
     listen(port:number){
